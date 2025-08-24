@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { createRealTimeBpmProcessor, getBiquadFilter } from 'realtime-bpm-analyzer'
 import { createAudioContext } from '../audio/createAudioContext'
 
 export type UseAudioOnsetOptions = {
@@ -9,12 +10,26 @@ export type UseAudioOnsetOptions = {
   targetBpm?: number
   sensitivity?: number
   bpmWindowSeconds?: number
+  minBpm?: number
+  maxBpm?: number
+  minConfidence?: number
+  silenceResetMs?: number
+  fluxSensitivity?: number
+  minRmsGate?: number
+  disableAudioProcessing?: boolean
+  useRealtimeBpmAnalyzer?: boolean
+  debugLogging?: boolean
+  fluxEveryN?: number
+  useWorkletOnset?: boolean
+  hpHz?: number
+  lpHz?: number
+  requireRecentSignal?: boolean
+  hitGateMs?: number
 }
 
 export type TimingStats = {
   currentBpm: number
   accuracy: number
-  feedback: string
   hitCount: number
 }
 
@@ -23,17 +38,31 @@ export function useAudioOnset(options?: UseAudioOnsetOptions) {
     analyserFftSize = 1024,
     bufferSize = 256,
     smoothingTimeConstant = 0.2,
-    debounceMs = 250,
+    debounceMs = 180,
     targetBpm = 120,
-    sensitivity = 2.5,
+    sensitivity = 1.0,
     bpmWindowSeconds = 8,
+    minBpm = 70,
+    maxBpm = 180,
+    minConfidence = 0.5,
+    silenceResetMs = 2000,
+    fluxSensitivity = 2.0,
+    minRmsGate = 0.01,
+    disableAudioProcessing = true,
+    useRealtimeBpmAnalyzer = false,
+    debugLogging = false,
+    fluxEveryN = 2,
+    useWorkletOnset = true,
+    hpHz = 200,
+    lpHz = 6000,
+    requireRecentSignal = false,
+    hitGateMs = 500,
   } = options || {}
 
   const [isRunning, setIsRunning] = useState(false)
   const [timingStats, setTimingStats] = useState<TimingStats>({
     currentBpm: 0,
     accuracy: 0,
-    feedback: '-',
     hitCount: 0,
   })
 
@@ -43,22 +72,41 @@ export function useAudioOnset(options?: UseAudioOnsetOptions) {
   const analyserRef = useRef<AnalyserNode | null>(null)
   const scriptNodeRef = useRef<ScriptProcessorNode | null>(null)
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null)
+  const realtimeNodeRef = useRef<AudioWorkletNode | null>(null)
+  const rbaBpmRef = useRef<number>(0)
+  const smoothedBpmRef = useRef<number>(0)
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const lastHitTimeRef = useRef<number>(0)
   const hitTimesRef = useRef<number[]>([])
+  const hitCountRef = useRef<number>(0)
 
   // Energy-based detection refs
   const lastEnergyRef = useRef<number>(0)
   const emaEnergyRef = useRef<number>(0)
   const noiseFloorRef = useRef<number>(0.004)
-  const triggerArmedRef = useRef<boolean>(true)
-  const aboveCountRef = useRef<number>(0)
+  const lastEnvelopeRef = useRef<number>(0)
+  const lastSlopeRef = useRef<number>(0)
+  const lastHitEnvelopeRef = useRef<number>(0)
+  const postHitDropSatisfiedRef = useRef<boolean>(true)
 
   // Ring buffer for BPM analysis (post-filter signal)
   const ringBufferRef = useRef<Float32Array | null>(null)
   const ringWriteIndexRef = useRef<number>(0)
   const ringCapacityRef = useRef<number>(0)
   const lastBpmAnalysisMsRef = useRef<number>(0)
+  const lastBpmRef = useRef<number>(0)
+  const bpmConfidenceRef = useRef<number>(0)
+  const lastSignalMsRef = useRef<number>(0)
+  const prevSpectrumRef = useRef<Float32Array | null>(null)
+  const fluxEmaRef = useRef<number>(0)
+  const fluxNoiseFloorRef = useRef<number>(1e-6)
+  const freqDataRef = useRef<Float32Array | null>(null)
+  const timeBufferRef = useRef<Float32Array | null>(null)
+  const fluxCounterRef = useRef<number>(0)
+  const onsetWorkletRef = useRef<AudioWorkletNode | null>(null)
+  const rafIdRef = useRef<number | null>(null)
+  const silentSinkRef = useRef<GainNode | null>(null)
+  const rbaSilentSinkRef = useRef<GainNode | null>(null)
 
   function writeToRingBuffer(samples: Float32Array) {
     const ring = ringBufferRef.current
@@ -88,105 +136,145 @@ export function useAudioOnset(options?: UseAudioOnsetOptions) {
     return result
   }
 
-  function getPeaksAtThreshold(data: Float32Array, threshold: number, sampleRate: number): number[] {
-    const peaks: number[] = []
-    const skipSamples = Math.floor(sampleRate / 4) // ~250ms
-    for (let i = 0; i < data.length; ) {
-      if (data[i] > threshold) {
-        peaks.push(i)
-        i += skipSamples
-        continue
-      }
-      i++
-    }
-    return peaks
-  }
+  function acfBpmEstimate(envelope: Float32Array, sampleRate: number, minBpmLocal: number, maxBpmLocal: number): { bpm: number; confidence: number } | null {
+    const minLag = Math.floor((60 / maxBpmLocal) * sampleRate)
+    const maxLag = Math.floor((60 / minBpmLocal) * sampleRate)
+    if (maxLag - minLag < 2) return null
 
-  function countIntervalsBetweenNearbyPeaks(peaks: number[]): Array<{ interval: number; count: number }> {
-    const intervalCounts: Array<{ interval: number; count: number }> = []
-    for (let index = 0; index < peaks.length; index++) {
-      const peak = peaks[index]
-      for (let i = 1; i <= 10 && index + i < peaks.length; i++) {
-        const interval = peaks[index + i] - peak
-        let found = false
-        for (let j = 0; j < intervalCounts.length; j++) {
-          if (intervalCounts[j].interval === interval) {
-            intervalCounts[j].count++
-            found = true
-            break
-          }
-        }
-        if (!found) intervalCounts.push({ interval, count: 1 })
-      }
+    // Normalize envelope (zero mean, unit variance) for robust ACF
+    let mean = 0
+    for (let i = 0; i < envelope.length; i++) mean += envelope[i]
+    mean /= envelope.length
+    let variance = 0
+    for (let i = 0; i < envelope.length; i++) {
+      const d = envelope[i] - mean
+      variance += d * d
     }
-    return intervalCounts
-  }
+    const std = Math.sqrt(Math.max(variance / envelope.length, 1e-9))
 
-  function groupIntervalsToTempo(intervalCounts: Array<{ interval: number; count: number }>, sampleRate: number): Array<{ tempo: number; count: number }> {
-    const tempoCounts: Array<{ tempo: number; count: number }> = []
-    for (let i = 0; i < intervalCounts.length; i++) {
-      const interval = intervalCounts[i].interval
-      if (interval <= 0) continue
-      let theoreticalTempo = 60 / (interval / sampleRate)
-      while (theoreticalTempo < 90) theoreticalTempo *= 2
-      while (theoreticalTempo > 180) theoreticalTempo /= 2
-      let found = false
-      for (let j = 0; j < tempoCounts.length; j++) {
-        if (Math.abs(tempoCounts[j].tempo - theoreticalTempo) < 0.5) {
-          tempoCounts[j].count += intervalCounts[i].count
-          found = true
-          break
-        }
+    const n = envelope.length
+    let bestLag = -1
+    let bestR = -Infinity
+    let secondBestR = -Infinity
+    for (let lag = minLag; lag <= maxLag; lag++) {
+      let r = 0
+      for (let i = 0; i < n - lag; i++) {
+        const a = (envelope[i] - mean) / std
+        const b = (envelope[i + lag] - mean) / std
+        r += a * b
       }
-      if (!found) tempoCounts.push({ tempo: theoreticalTempo, count: intervalCounts[i].count })
+      r /= (n - lag)
+      if (r > bestR) {
+        secondBestR = bestR
+        bestR = r
+        bestLag = lag
+      } else if (r > secondBestR) {
+        secondBestR = r
+      }
     }
-    return tempoCounts
+
+    if (bestLag <= 0 || !isFinite(bestR)) return null
+    const bpm = 60 / (bestLag / sampleRate)
+    const confidence = Math.max(0, Math.min(1, (bestR - Math.max(0, secondBestR)) / (1 - Math.max(0, secondBestR) + 1e-6)))
+    return { bpm, confidence }
   }
 
   function analyzeBpmFromRing() {
     const ctx = audioContextRef.current
-    const analyser = analyserRef.current
-    if (!ctx || !analyser) return
+    if (!ctx) return
+
+    // Silence/inactivity gate: if quiet for a while, reset BPM to 0
+    if (performance && performance.now) {
+      const nowMs = performance.now()
+      if (nowMs - lastSignalMsRef.current > silenceResetMs) {
+        lastBpmRef.current = 0
+        bpmConfidenceRef.current = 0
+        setTimingStats((prev) => ({
+          currentBpm: 0,
+          accuracy: 0,
+          hitCount: prev.hitCount,
+        }))
+        return
+      }
+    }
 
     const sampleRate = ctx.sampleRate
     const windowSamples = Math.min(ringCapacityRef.current, Math.floor(bpmWindowSeconds * sampleRate))
     const data = readLatestFromRingBuffer(windowSamples)
     if (!data) return
-
-    // Compute dynamic threshold using RMS of the window
-    let sumSquares = 0
+    // RMS gate for analysis window
+    let wSumSq = 0
     for (let i = 0; i < data.length; i++) {
       const x = data[i]
-      sumSquares += x * x
+      wSumSq += x * x
     }
-    const rms = Math.sqrt(sumSquares / data.length)
-    const threshold = rms * 2.2
+    const wRms = Math.sqrt(wSumSq / data.length)
+    if (wRms < minRmsGate) {
+      lastBpmRef.current = 0
+      bpmConfidenceRef.current = 0
+      setTimingStats((prev) => ({
+        currentBpm: 0,
+        accuracy: 0,
+        hitCount: prev.hitCount,
+      }))
+      return
+    }
 
-    const peaks = getPeaksAtThreshold(data, threshold, sampleRate)
-    if (peaks.length < 3) return
+    // Use the envelope already lowpassed by EMA: build envelope array
+    // Here ring buffer stores raw time-domain samples; compute short-time RMS per hop for BPM
+    const frameSize = 256
+    const hopSize = 128
+    const frames = Math.max(0, Math.floor((data.length - frameSize) / hopSize))
+    if (frames < 8) return
+    const envelope = new Float32Array(frames)
+    let write = 0
+    for (let start = 0; start + frameSize <= data.length; start += hopSize) {
+      let sum = 0
+      for (let i = 0; i < frameSize; i++) {
+        const x = data[start + i]
+        sum += x * x
+      }
+      envelope[write++] = Math.sqrt(sum / frameSize)
+    }
 
-    const intervals = countIntervalsBetweenNearbyPeaks(peaks)
-    const tempos = groupIntervalsToTempo(intervals, sampleRate)
-    if (tempos.length === 0) return
+    // Light smoothing of envelope
+    for (let i = 1; i < envelope.length; i++) {
+      envelope[i] = 0.6 * envelope[i - 1] + 0.4 * envelope[i]
+    }
 
-    tempos.sort((a, b) => b.count - a.count)
-    const best = tempos[0]
+    const hopRate = sampleRate / hopSize
+    const result = acfBpmEstimate(envelope, hopRate, minBpm, maxBpm)
+    if (!result) return
+    if (result.confidence < minConfidence) {
+      // Low confidence: treat as no reliable BPM
+      lastBpmRef.current = 0
+      bpmConfidenceRef.current = 0
+      setTimingStats((prev) => ({
+        currentBpm: 0,
+        accuracy: 0,
+        feedback: '-',
+        hitCount: prev.hitCount,
+      }))
+      return
+    }
 
-    // Update current BPM and accuracy/feedback vs target
-    const currentBpmVal = Math.round(best.tempo)
+    // Exponential smoothing of BPM and confidence
+    const smoothing = 0.7
+    if (lastBpmRef.current === 0) {
+      lastBpmRef.current = result.bpm
+      bpmConfidenceRef.current = result.confidence
+    } else {
+      lastBpmRef.current = smoothing * lastBpmRef.current + (1 - smoothing) * result.bpm
+      bpmConfidenceRef.current = 0.8 * bpmConfidenceRef.current + 0.2 * result.confidence
+    }
+
+    const currentBpmVal = Math.round(lastBpmRef.current)
     const targetInterval = 60000 / targetBpm
     const currentInterval = 60000 / currentBpmVal
     const accuracy = Math.max(0, 100 - (Math.abs(currentInterval - targetInterval) / targetInterval) * 100)
-    let feedback = 'On Time'
-    const toleranceMs = targetInterval * 0.1
-    const diff = currentInterval - targetInterval
-    if (diff < -toleranceMs) feedback = 'Rushing'
-    else if (diff > toleranceMs) feedback = 'Dragging'
-
     setTimingStats((prev) => ({
       currentBpm: currentBpmVal,
       accuracy: Math.round(accuracy),
-      feedback,
       hitCount: prev.hitCount,
     }))
   }
@@ -196,95 +284,160 @@ export function useAudioOnset(options?: UseAudioOnsetOptions) {
     const audioContext = audioContextRef.current
     if (!analyser || !audioContext) return
 
-    const timeDomainData = new Float32Array(analyser.fftSize)
+    // If using worklet onset, this callback is only for ring/flux sampling when ScriptProcessor is not used.
+    // We still allow it to run if a ScriptProcessor is present (legacy path), but avoid onset detection work.
+
+    // Reuse time-domain buffer to avoid per-callback allocations
+    if (!timeBufferRef.current || timeBufferRef.current.length !== analyser.fftSize) {
+      timeBufferRef.current = new Float32Array(analyser.fftSize)
+    }
+    const timeDomainData = timeBufferRef.current
     analyser.getFloatTimeDomainData(timeDomainData)
 
-    // Write filtered samples into ring buffer for BPM analysis
-    writeToRingBuffer(timeDomainData)
+    // Write raw samples into ring buffer for BPM analysis (skip if using realtime analyzer)
+    if (!useRealtimeBpmAnalyzer) {
+      writeToRingBuffer(timeDomainData)
+    }
 
     const now = audioContext.currentTime * 1000
-    const refractory = now - lastHitTimeRef.current < debounceMs
 
-    // Energy-based quick onset detection with hysteresis & multi-frame confirmation
-    let sumSquares = 0
-    for (let i = 0; i < timeDomainData.length; i++) {
-      const x = timeDomainData[i]
-      sumSquares += x * x
+    // If worklet handles onset detection, skip the energy-based detection on main thread
+    let envelope = emaEnergyRef.current
+    let dynamicThreshold = noiseFloorRef.current * sensitivity
+    let slope = lastSlopeRef.current
+    if (!useWorkletOnset) {
+      // Energy-based detection with envelope peak logic
+      let sumSquares = 0
+      for (let i = 0; i < timeDomainData.length; i++) {
+        const x = timeDomainData[i]
+        sumSquares += x * x
+      }
+      const currentEnergy = Math.sqrt(sumSquares / timeDomainData.length)
+
+      if (lastEnergyRef.current === 0) {
+        emaEnergyRef.current = currentEnergy
+        lastEnvelopeRef.current = currentEnergy
+        noiseFloorRef.current = Math.max(noiseFloorRef.current, currentEnergy)
+        lastEnergyRef.current = currentEnergy
+        postHitDropSatisfiedRef.current = true
+        return
+      }
+
+      const alpha = 0.92
+      emaEnergyRef.current = alpha * emaEnergyRef.current + (1 - alpha) * currentEnergy
+      envelope = emaEnergyRef.current
+      slope = envelope - lastEnvelopeRef.current
+
+      // Threshold purely from noise floor and sensitivity
+      dynamicThreshold = noiseFloorRef.current * sensitivity
+
+      const refractory = now - lastHitTimeRef.current < debounceMs
+
+      // Require envelope to drop sufficiently after a hit before next hit
+      if (!postHitDropSatisfiedRef.current) {
+        const rearmLevel = Math.max(noiseFloorRef.current * 1.2, lastHitEnvelopeRef.current * 0.4)
+        if (envelope <= rearmLevel) {
+          postHitDropSatisfiedRef.current = true
+        }
+      }
+
+      // Peak when envelope slope flips while above threshold
+      const peakDetected = lastSlopeRef.current > 0 && slope <= 0 && envelope > dynamicThreshold
+
+      if (!refractory && postHitDropSatisfiedRef.current && peakDetected) {
+        const prev = hitTimesRef.current.length > 0 ? hitTimesRef.current[hitTimesRef.current.length - 1] : null
+        lastHitTimeRef.current = now
+        lastHitEnvelopeRef.current = envelope
+        postHitDropSatisfiedRef.current = false
+
+        // Validate with recent spectral/energy signal and plausible tempo range
+        const nowWall = performance && performance.now ? performance.now() : now
+        const recentSignal = nowWall - lastSignalMsRef.current <= hitGateMs
+        const minIntervalMs = 60000 / Math.max(1, maxBpm)
+        const maxIntervalMs = 60000 / Math.max(1, Math.max(1, minBpm))
+        let accepted = true
+        let intervalMs = 0
+        if (prev !== null) {
+          intervalMs = now - prev
+          if (intervalMs < minIntervalMs || intervalMs > maxIntervalMs) accepted = false
+        }
+        if (requireRecentSignal && !recentSignal) accepted = false
+
+        hitTimesRef.current.push(now)
+        hitCountRef.current += 1
+        if (hitTimesRef.current.length > 10) hitTimesRef.current = hitTimesRef.current.slice(-10)
+        console.log(`HIT #${hitCountRef.current}${accepted ? '' : ' (ignored)'}`)
+
+        if (!accepted || prev === null) return
+
+        const times = hitTimesRef.current
+        const instantBpm = 60000 / intervalMs
+        const intervals: number[] = []
+        for (let i = Math.max(1, times.length - 4); i < times.length; i++) {
+          const d = times[i] - times[i - 1]
+          if (d >= minIntervalMs && d <= maxIntervalMs) intervals.push(d)
+        }
+        const avgInterval = intervals.length > 0 ? intervals.reduce((s, v) => s + v, 0) / intervals.length : intervalMs
+        const avgBpm = 60000 / avgInterval
+        console.log('HIT', { t: now.toFixed(1) + 'ms', intervalMs: Math.round(intervalMs), instantBpm: Math.round(instantBpm), avgBpm: Math.round(avgBpm) })
+
+        if (!useRealtimeBpmAnalyzer || rbaBpmRef.current === 0) {
+          const targetInterval = 60000 / targetBpm
+          const currentInterval = avgInterval
+          const accuracy = Math.max(0, 100 - (Math.abs(currentInterval - targetInterval) / targetInterval) * 100)
+          setTimingStats((prevStats) => ({
+            currentBpm: Math.round(avgBpm),
+            accuracy: Math.round(accuracy),
+            hitCount: prevStats.hitCount + 0,
+          }))
+        }
+      }
     }
-    const currentEnergy = Math.sqrt(sumSquares / timeDomainData.length)
 
-    if (lastEnergyRef.current === 0) {
-      emaEnergyRef.current = currentEnergy
-      noiseFloorRef.current = Math.max(noiseFloorRef.current, currentEnergy)
-      lastEnergyRef.current = currentEnergy
-      return
-    }
-
-    const alpha = 0.92
-    emaEnergyRef.current = alpha * emaEnergyRef.current + (1 - alpha) * currentEnergy
-    const rawSpike = currentEnergy - emaEnergyRef.current
-    const energySpike = Math.max(0, rawSpike)
-    const baseThreshold = noiseFloorRef.current * sensitivity
-    const emaClampHigh = emaEnergyRef.current * 0.5
-    const highThreshold = Math.max(baseThreshold, emaClampHigh)
-    const lowThreshold = highThreshold * 0.4
-
-    // Update noise floor (fast up, very slow down)
-    const upRate = 0.12
-    const downRate = 0.003
-    if (currentEnergy > noiseFloorRef.current) {
-      noiseFloorRef.current = (1 - upRate) * noiseFloorRef.current + upRate * currentEnergy
-    } else {
-      noiseFloorRef.current = (1 - downRate) * noiseFloorRef.current + downRate * currentEnergy
-    }
-
-    // Hysteresis state machine
-    if (triggerArmedRef.current && !refractory) {
-      const minAbs = 0.006
-      if (energySpike > highThreshold && currentEnergy > minAbs && currentEnergy > noiseFloorRef.current * 1.6) {
-        aboveCountRef.current += 1
-        if (aboveCountRef.current >= 2) {
-          // Fire hit
-          const prev = hitTimesRef.current.length > 0 ? hitTimesRef.current[hitTimesRef.current.length - 1] : null
-          lastHitTimeRef.current = now
-          hitTimesRef.current.push(now)
-          if (hitTimesRef.current.length > 10) hitTimesRef.current = hitTimesRef.current.slice(-10)
-          triggerArmedRef.current = false
-          aboveCountRef.current = 0
-
-          if (prev !== null) {
-            const intervalMs = now - prev
-            const instantBpm = 60000 / intervalMs
-            const targetInterval = 60000 / targetBpm
-            const errorMs = intervalMs - targetInterval
-            const errorPct = (errorMs / targetInterval) * 100
-            const verdict = Math.abs(errorMs) <= targetInterval * 0.05 ? 'On Time' : errorMs < 0 ? 'Rushing' : 'Dragging'
-            const times = hitTimesRef.current
-            const intervals: number[] = []
-            for (let i = Math.max(1, times.length - 4); i < times.length; i++) {
-              intervals.push(times[i] - times[i - 1])
-            }
-            const avgInterval = intervals.reduce((s, v) => s + v, 0) / intervals.length
-            const avgBpm = 60000 / avgInterval
-            console.log('HIT', {
-              t: now.toFixed(1) + 'ms', intervalMs: Math.round(intervalMs), instantBpm: Math.round(instantBpm), avgBpm: Math.round(avgBpm), targetBpm, errorMs: Math.round(errorMs), errorPct: Math.round(errorPct), verdict,
-            })
-          } else {
-            console.log('HIT (first)')
-          }
+    // Spectral flux gate to suppress stationary background noise (throttled)
+    let fluxThreshold = fluxNoiseFloorRef.current * fluxSensitivity
+    fluxCounterRef.current = (fluxCounterRef.current + 1) % Math.max(1, Math.floor(fluxEveryN))
+    if (fluxCounterRef.current === 0) {
+      if (!freqDataRef.current || freqDataRef.current.length !== analyser.frequencyBinCount) {
+        freqDataRef.current = new Float32Array(analyser.frequencyBinCount)
+      }
+      const freqData = freqDataRef.current
+      analyser.getFloatFrequencyData(freqData)
+      let flux = 0
+      if (!prevSpectrumRef.current || prevSpectrumRef.current.length !== freqData.length) {
+        prevSpectrumRef.current = new Float32Array(freqData.length)
+        for (let i = 0; i < freqData.length; i++) {
+          prevSpectrumRef.current[i] = Math.pow(10, freqData[i] / 20)
         }
       } else {
-        aboveCountRef.current = 0
+        for (let i = 0; i < freqData.length; i++) {
+          const mag = Math.pow(10, freqData[i] / 20)
+          const prevMag = prevSpectrumRef.current[i]
+          const diff = mag - prevMag
+          if (diff > 0) flux += diff
+          prevSpectrumRef.current[i] = mag
+        }
       }
-    } else {
-      // Rearm only when clearly below low threshold
-      if (energySpike < lowThreshold && currentEnergy < noiseFloorRef.current * 1.2) {
-        triggerArmedRef.current = true
+      const fluxAlpha = 0.9
+      fluxEmaRef.current = fluxAlpha * fluxEmaRef.current + (1 - fluxAlpha) * flux
+      if (fluxEmaRef.current > fluxNoiseFloorRef.current) {
+        fluxNoiseFloorRef.current = 0.9 * fluxNoiseFloorRef.current + 0.1 * fluxEmaRef.current
+      } else {
+        fluxNoiseFloorRef.current = 0.995 * fluxNoiseFloorRef.current + 0.005 * fluxEmaRef.current
+      }
+      fluxThreshold = fluxNoiseFloorRef.current * fluxSensitivity
+    }
+    if (performance && performance.now) {
+      const pnow = performance.now()
+      if (envelope > dynamicThreshold || fluxEmaRef.current > fluxThreshold) {
+        lastSignalMsRef.current = pnow
       }
     }
 
-    // Periodically run BPM analysis (~1s)
-    if (performance && performance.now) {
+    // Noise floor is adapted by worklet path or above when not using worklet
+
+    // Periodically run BPM analysis (~1s) when not using realtime analyzer
+    if (!useRealtimeBpmAnalyzer && performance && performance.now) {
       const t = performance.now()
       if (t - lastBpmAnalysisMsRef.current > 1000) {
         lastBpmAnalysisMsRef.current = t
@@ -292,8 +445,12 @@ export function useAudioOnset(options?: UseAudioOnsetOptions) {
       }
     }
 
-    lastEnergyRef.current = currentEnergy
-  }, [debounceMs, sensitivity, targetBpm])
+    // Update trackers when we computed envelope locally
+    if (!useWorkletOnset) {
+      lastSlopeRef.current = slope
+      lastEnvelopeRef.current = envelope
+    }
+  }, [debounceMs, sensitivity, targetBpm, useWorkletOnset, useRealtimeBpmAnalyzer, fluxEveryN, fluxSensitivity])
 
   const start = useCallback(async () => {
     if (isRunning) return
@@ -306,32 +463,36 @@ export function useAudioOnset(options?: UseAudioOnsetOptions) {
     lastHitTimeRef.current = 0
     lastEnergyRef.current = 0
     emaEnergyRef.current = 0
+    lastEnvelopeRef.current = 0
+    lastSlopeRef.current = 0
+    lastHitEnvelopeRef.current = 0
     noiseFloorRef.current = 0.004
     hitTimesRef.current = []
-    triggerArmedRef.current = true
-    aboveCountRef.current = 0
+    hitCountRef.current = 0
+    postHitDropSatisfiedRef.current = true
     lastBpmAnalysisMsRef.current = 0
+    lastSignalMsRef.current = performance && performance.now ? performance.now() : 0
 
     mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({
       audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
+        echoCancellation: disableAudioProcessing ? false : true,
+        noiseSuppression: disableAudioProcessing ? false : true,
+        autoGainControl: disableAudioProcessing ? false : true,
         channelCount: 1,
       },
     } as MediaStreamConstraints)
     microphoneRef.current = audioContext.createMediaStreamSource(mediaStreamRef.current)
 
-    // High-pass then Low-pass to form a band around drum transients
+    // Band-pass (configurable for claps): default HP 300 Hz, LP 4000 Hz
     const hp = audioContext.createBiquadFilter()
     hp.type = 'highpass'
-    hp.frequency.value = 100
+    hp.frequency.value = hpHz
     hp.Q.value = 0.707
     hpFilterRef.current = hp
 
     const lp = audioContext.createBiquadFilter()
     lp.type = 'lowpass'
-    lp.frequency.value = 180
+    lp.frequency.value = lpHz
     lp.Q.value = 0.707
     lpFilterRef.current = lp
 
@@ -345,22 +506,178 @@ export function useAudioOnset(options?: UseAudioOnsetOptions) {
     ringBufferRef.current = new Float32Array(ringCapacityRef.current)
     ringWriteIndexRef.current = 0
 
-    const allowed = [256, 512, 1024, 2048, 4096, 8192, 16384]
-    const safeBufferSize = allowed.includes(bufferSize) ? bufferSize : 256
-    const scriptNode = audioContext.createScriptProcessor(safeBufferSize, 1, 1)
-    scriptNode.onaudioprocess = processAudio
-    scriptNodeRef.current = scriptNode
+    // Create ScriptProcessor only if not using worklet onset
+    if (!useWorkletOnset) {
+      const allowed = [256, 512, 1024, 2048, 4096, 8192, 16384]
+      const safeBufferSize = allowed.includes(bufferSize) ? bufferSize : 256
+      const scriptNode = audioContext.createScriptProcessor(safeBufferSize, 1, 1)
+      scriptNode.onaudioprocess = processAudio
+      scriptNodeRef.current = scriptNode
+    }
 
-    // Connect graph: mic -> HP -> LP -> analyser -> script -> destination
+    // Optional realtime-bpm-analyzer
+    if (useRealtimeBpmAnalyzer) {
+      try {
+        // Ensure worklet is loaded
+        if (!('audioWorklet' in audioContext)) {
+          console.warn('AudioWorklet not supported; skipping realtime-bpm-analyzer')
+        } else {
+          const rbaNode = await createRealTimeBpmProcessor(audioContext)
+          realtimeNodeRef.current = rbaNode
+          // Minimal pre-filter to focus on beat band
+          const rbaFilter = getBiquadFilter(audioContext)
+          const rbaSink = audioContext.createGain()
+          rbaSink.gain.value = 0
+          microphoneRef.current.connect(rbaFilter).connect(rbaNode)
+          rbaNode.connect(rbaSink).connect(audioContext.destination)
+          rbaSilentSinkRef.current = rbaSink
+          rbaNode.port.onmessage = (event: MessageEvent) => {
+            const msg = event.data
+            if (!msg || !msg.message) return
+            if (msg.message === 'BPM' || msg.message === 'BPM_STABLE') {
+              const bpmValRaw = msg.data.bpm
+              // Smooth BPM for display
+              if (smoothedBpmRef.current === 0) smoothedBpmRef.current = bpmValRaw
+              smoothedBpmRef.current = 0.7 * smoothedBpmRef.current + 0.3 * bpmValRaw
+              const bpmVal = Math.round(smoothedBpmRef.current)
+              rbaBpmRef.current = bpmVal
+              const targetInterval = 60000 / targetBpm
+              const currentInterval = 60000 / bpmVal
+              const accuracy = Math.max(0, 100 - (Math.abs(currentInterval - targetInterval) / targetInterval) * 100)
+              setTimingStats((prev) => ({
+                currentBpm: bpmVal,
+                accuracy: Math.round(accuracy),
+                hitCount: prev.hitCount,
+              }))
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to init realtime-bpm-analyzer, continuing without it', e)
+      }
+    }
+
+    // Connect main analysis graph
+    // mic -> HP -> LP
     microphoneRef.current.connect(hp)
     hp.connect(lp)
+
+    // LP -> analyser (for ring/flux sampling)
     lp.connect(analyser)
-    analyser.connect(scriptNode)
-    scriptNode.connect(audioContext.destination)
+
+    // LP -> onset worklet if enabled
+    if (useWorkletOnset && 'audioWorklet' in audioContext) {
+      try {
+        await audioContext.audioWorklet.addModule(new URL('../audio/onset.worklet.js', import.meta.url))
+        const onsetNode = new AudioWorkletNode(audioContext, 'onset-processor', {
+          numberOfInputs: 1,
+          numberOfOutputs: 0,
+          processorOptions: {
+            sensitivity,
+            debounceMs,
+          },
+        })
+        onsetWorkletRef.current = onsetNode
+        lp.connect(onsetNode)
+        onsetNode.port.onmessage = (evt: MessageEvent) => {
+          const data = evt.data as { type: string; timeMs: number }
+          if (!data) return
+          if (data.type === 'signal') {
+            lastSignalMsRef.current = data.timeMs
+          } else if (data.type === 'hit') {
+            const now = data.timeMs
+            const prev = hitTimesRef.current.length > 0 ? hitTimesRef.current[hitTimesRef.current.length - 1] : null
+            lastHitTimeRef.current = now
+            // Accept hit only if recent spectral/energy signal was observed
+            const nowWall = performance && performance.now ? performance.now() : now
+            const recentSignal = nowWall - lastSignalMsRef.current <= hitGateMs
+            const minIntervalMs = 60000 / Math.max(1, maxBpm)
+            const maxIntervalMs = 60000 / Math.max(1, Math.max(1, minBpm))
+            // If prev exists, compute interval and validate
+            let accepted = true
+            let intervalMs = 0
+            if (prev !== null) {
+              intervalMs = now - prev
+              if (intervalMs < minIntervalMs || intervalMs > maxIntervalMs) {
+                accepted = false
+              }
+            }
+
+            if (requireRecentSignal && !recentSignal) accepted = false
+
+            // Always count/log the hit for debugging
+            hitTimesRef.current.push(now)
+            hitCountRef.current += 1
+            if (hitTimesRef.current.length > 10) hitTimesRef.current = hitTimesRef.current.slice(-10)
+            console.log(`HIT #${hitCountRef.current}${accepted ? '' : ' (ignored)'}`)
+
+            if (!accepted || prev === null) return
+
+            const times = hitTimesRef.current
+            const instantBpm = 60000 / intervalMs
+            const intervals: number[] = []
+            for (let i = Math.max(1, times.length - 4); i < times.length; i++) {
+              const d = times[i] - times[i - 1]
+              if (d >= minIntervalMs && d <= maxIntervalMs) intervals.push(d)
+            }
+            const avgInterval = intervals.length > 0 ? intervals.reduce((s, v) => s + v, 0) / intervals.length : intervalMs
+            const avgBpm = 60000 / avgInterval
+            console.log('HIT', {
+              t: now.toFixed(1) + 'ms',
+              intervalMs: Math.round(intervalMs),
+              instantBpm: Math.round(instantBpm),
+              avgBpm: Math.round(avgBpm),
+            })
+
+            // Update displayed BPM from hits if realtime analyzer is off or has no BPM yet
+            if (!useRealtimeBpmAnalyzer || rbaBpmRef.current === 0) {
+              const targetInterval = 60000 / targetBpm
+              const currentInterval = avgInterval
+              const accuracy = Math.max(0, 100 - (Math.abs(currentInterval - targetInterval) / targetInterval) * 100)
+              setTimingStats((prevStats) => ({
+                currentBpm: Math.round(avgBpm),
+                accuracy: Math.round(accuracy),
+                hitCount: prevStats.hitCount + 0,
+              }))
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to init onset worklet; falling back to ScriptProcessor', e)
+        if (!scriptNodeRef.current) {
+          const allowed = [256, 512, 1024, 2048, 4096, 8192, 16384]
+          const safeBufferSize = allowed.includes(bufferSize) ? bufferSize : 256
+          const scriptNode = audioContext.createScriptProcessor(safeBufferSize, 1, 1)
+          scriptNode.onaudioprocess = processAudio
+          scriptNodeRef.current = scriptNode
+        }
+      }
+    }
+
+    // Ensure the graph is pulled by connecting a silent sink to destination
+    if (!silentSinkRef.current) {
+      const sink = audioContext.createGain()
+      sink.gain.value = 0
+      lp.connect(sink)
+      sink.connect(audioContext.destination)
+      silentSinkRef.current = sink
+    }
+
+    // If ScriptProcessor is present, connect it to drive processAudio; otherwise, start a rAF sampler
+    if (scriptNodeRef.current) {
+      analyser.connect(scriptNodeRef.current)
+      scriptNodeRef.current.connect(audioContext.destination)
+    } else {
+      const tick = () => {
+        processAudio()
+        rafIdRef.current = self.requestAnimationFrame(tick)
+      }
+      rafIdRef.current = self.requestAnimationFrame(tick)
+    }
 
     setIsRunning(true)
-    console.log('mic started')
-  }, [analyserFftSize, bpmWindowSeconds, bufferSize, isRunning, processAudio, smoothingTimeConstant])
+    if (debugLogging) console.log('mic started')
+  }, [analyserFftSize, bpmWindowSeconds, bufferSize, isRunning, processAudio, smoothingTimeConstant, useWorkletOnset, sensitivity, debounceMs, targetBpm, useRealtimeBpmAnalyzer, debugLogging])
 
   const stop = useCallback(() => {
     if (!isRunning) return
@@ -370,8 +687,14 @@ export function useAudioOnset(options?: UseAudioOnsetOptions) {
     lpFilterRef.current?.disconnect()
     analyserRef.current?.disconnect()
     scriptNodeRef.current?.disconnect()
+    onsetWorkletRef.current?.disconnect?.()
+    realtimeNodeRef.current?.disconnect()
     if (scriptNodeRef.current) {
       scriptNodeRef.current.onaudioprocess = null
+    }
+    if (rafIdRef.current !== null) {
+      self.cancelAnimationFrame(rafIdRef.current)
+      rafIdRef.current = null
     }
     mediaStreamRef.current?.getTracks().forEach((t) => t.stop())
     audioContextRef.current?.close()
@@ -381,20 +704,23 @@ export function useAudioOnset(options?: UseAudioOnsetOptions) {
     lpFilterRef.current = null
     analyserRef.current = null
     scriptNodeRef.current = null
+    onsetWorkletRef.current = null
     mediaStreamRef.current = null
     audioContextRef.current = null
 
     setIsRunning(false)
-    console.log('mic stopped')
+    if (debugLogging) console.log('mic stopped')
 
     // Reset timing stats
     setTimingStats({
       currentBpm: 0,
       accuracy: 0,
-      feedback: '-',
       hitCount: 0,
     })
     hitTimesRef.current = []
+    hitCountRef.current = 0
+    lastSignalMsRef.current = 0
+    timeBufferRef.current = null
   }, [isRunning])
 
   return { isRunning, start, stop, timingStats }
