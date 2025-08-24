@@ -7,12 +7,13 @@ import { useAudioOnset } from './hooks/useAudioOnset'
 // const DEBOUNCE_TIME = 50;   // kept for reference
 
 export default function App() {
-  const { isRunning, start, stop } = useAudioOnset({
+  const { isRunning, start, stop, timingStats } = useAudioOnset({
     analyserFftSize: 512,
     bufferSize: 256,
     smoothingTimeConstant: 0.02,
     debounceMs: 20,
-    threshold: 0.01,
+    targetBpm: 120,
+    sensitivity: 0.4,
   })
 
   return (
@@ -31,15 +32,15 @@ export default function App() {
         <div className="statsGrid">
           <div className="statCard">
             <h3>Current BPM</h3>
-            <p className="bpmValue">-</p>
+            <p className="bpmValue">{timingStats.currentBpm || '-'}</p>
           </div>
           <div className="statCard">
             <h3>Accuracy</h3>
-            <p className="accuracyValue">-</p>
+            <p className="accuracyValue">{timingStats.accuracy ? `${timingStats.accuracy}%` : '-'}</p>
           </div>
           <div className="statCard">
             <h3>Feedback</h3>
-            <p className="feedbackValue">-</p>
+            <p className="feedbackValue">{timingStats.feedback}</p>
           </div>
         </div>
       </div>
