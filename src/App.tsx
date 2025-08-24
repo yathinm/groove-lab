@@ -55,11 +55,22 @@ export default function App() {
       const arrayBuffer = await file.arrayBuffer();
       const decoded = await ctx.decodeAudioData(arrayBuffer);
       player.setBuffer(decoded);
+      const t0 = performance.now();
       const detected = await detectBpmFromAudioBuffer(decoded);
+      const t1 = performance.now();
+      // eslint-disable-next-line no-console
+      console.log('[BPM] detected', detected, `in ${(t1 - t0).toFixed(0)}ms`, {
+        durationSec: decoded.duration,
+        sampleRate: decoded.sampleRate,
+        length: decoded.length,
+      });
       setBpm(Math.round(detected));
       metronome.setBpm(detected);
     } catch (e) {
-      setError((e as Error).message || 'Failed to process file');
+      const msg = (e as Error).message || 'Failed to process file';
+      // eslint-disable-next-line no-console
+      console.error('[BPM] detection error:', e);
+      setError(msg);
     } finally {
       setProcessing(false);
     }
