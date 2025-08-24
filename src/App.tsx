@@ -96,7 +96,7 @@ export default function App() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <header>
-        <h1>GrooveLab</h1>
+        <h1>Groove Lab</h1>
         <p>Upload a song, detect BPM, and practice with a synced metronome.</p>
       </header>
 
