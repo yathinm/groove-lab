@@ -45,6 +45,12 @@ export default function App() {
   }, [metronome, metroVolume]);
 
   const onFileChange = async (file: File | null) => {
+    // Stop current playback if a new file is selected while playing
+    if (isPlaying) {
+      metronome.stop();
+      player.stop();
+      setIsPlaying(false);
+    }
     setSelectedFile(file);
     setBpm(null);
     setError(null);
