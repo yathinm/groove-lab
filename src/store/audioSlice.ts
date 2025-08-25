@@ -129,9 +129,7 @@ const audioSlice = createSlice({
         state.positionSec = action.payload.positionSec
         state.isPlaying = action.payload.isPlaying
       })
-      .addCase(skip.fulfilled, (state, action) => {
-        // no state change here; UI should dispatch seekTo(base+delta)
-      })
+      .addCase(skip.fulfilled, () => {})
   },
 })
 

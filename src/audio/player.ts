@@ -126,9 +126,7 @@ export class AudioPlayer {
 		}
 	}
 
-	flushPendingStarts() {
-		// No-op placeholder in case we later queue multiple starts; having a method ensures call sites exist.
-	}
+//
 
 	getDurationSeconds(): number {
 		if (this.audioEl && isFinite(this.audioEl.duration)) return this.audioEl.duration;
