@@ -17,6 +17,7 @@ export default function App() {
   const [trackVolume, setTrackVolume] = useState(0.9);
   const [metroVolume, setMetroVolume] = useState(0.7);
   const [positionSec, setPositionSec] = useState(0);
+  const rafRef = useRef<number | null>(null);
 
   // Waveform display removed
 
@@ -46,6 +47,30 @@ export default function App() {
   useEffect(() => {
     metronome.setVolume(metroVolume);
   }, [metronome, metroVolume]);
+
+  // Update the position slider while playing
+  useEffect(() => {
+    const ctx = ensureAudioContext();
+    const tick = () => {
+      if (isPlaying) {
+        const pos = player.getPlaybackOffsetSeconds(ctx.currentTime);
+        setPositionSec((prev) => (Math.abs(prev - pos) > 0.05 ? pos : prev));
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+  }, [isPlaying, player]);
+
+  const formatTime = (s: number) => {
+    if (!isFinite(s)) return '0:00';
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
 
   const onFileChange = async (file: File | null) => {
     // Stop current playback if a new file is selected while playing
@@ -212,6 +237,26 @@ export default function App() {
             value={metroVolume}
             onChange={(e) => setMetroVolume(parseFloat(e.target.value))}
           />
+        </div>
+        <div style={{ gridColumn: '1 / span 2' }}>
+          <input
+            type="range"
+            min={0}
+            max={player.getDurationSeconds() || 0}
+            step={0.01}
+            value={positionSec}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              setPositionSec(v);
+              seekTo(v);
+            }}
+            disabled={!selectedFile || processing}
+            style={{ width: '100%' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+            <span>{formatTime(positionSec)}</span>
+            <span>{formatTime(player.getDurationSeconds() || 0)}</span>
+          </div>
         </div>
       </section>
     </div>
