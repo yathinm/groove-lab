@@ -16,6 +16,9 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [trackVolume, setTrackVolume] = useState(0.9);
   const [metroVolume, setMetroVolume] = useState(0.7);
+  const [positionSec, setPositionSec] = useState(0);
+
+  // Waveform display removed
 
   // Lazily create audio context on first user gesture
   const ensureAudioContext = () => {
@@ -61,6 +64,8 @@ export default function App() {
       const arrayBuffer = await file.arrayBuffer();
       const decoded = await ctx.decodeAudioData(arrayBuffer);
       player.setBuffer(decoded);
+      player.setMediaFile(file);
+      // Waveform display removed
       const t0 = performance.now();
       const detected = await detectBpmFromAudioBuffer(decoded);
       const t1 = performance.now();
@@ -84,19 +89,68 @@ export default function App() {
 
   const onPlayPause = async () => {
     const ctx = ensureAudioContext();
+    // eslint-disable-next-line no-console
+    console.log('[PLAY/PAUSE] isPlaying?', isPlaying, 'posSec', positionSec, 'ctx.t', ctx.currentTime);
     if (!isPlaying) {
       // Resume context if suspended
       if (ctx.state === 'suspended') await ctx.resume();
-      const startAt = ctx.currentTime + 0.05;
-      player.playAt(startAt);
-      if (bpm) metronome.setBpm(bpm);
-      metronome.startAt(startAt);
+      // Prefer media element when available for robust play/seek
+      if ((player as unknown as any).hasMedia?.()) {
+        (player as unknown as any).playMediaAt(positionSec);
+        const startAt = ctx.currentTime + 0.02;
+        if (bpm) metronome.setBpm(bpm);
+        metronome.startAt(startAt);
+      } else {
+        const startAt = ctx.currentTime + 0.03;
+        // eslint-disable-next-line no-console
+        console.log('[PLAY] startAt', startAt, 'offset', positionSec);
+        player.playAt(startAt, positionSec);
+        if (bpm) metronome.setBpm(bpm);
+        metronome.startAt(startAt);
+      }
       setIsPlaying(true);
     } else {
+      // eslint-disable-next-line no-console
+      console.log('[PAUSE] stopping');
       metronome.stop();
       player.stop();
       setIsPlaying(false);
     }
+  };
+
+  const seekTo = async (targetSec: number) => {
+    const ctx = ensureAudioContext();
+    const duration = player.getDurationSeconds();
+    const clamped = Math.max(0, Math.min(targetSec, duration));
+    // eslint-disable-next-line no-console
+    console.log('[SEEK] request', { targetSec, clamped, duration, ctxTime: ctx.currentTime });
+    setPositionSec(clamped);
+    // Always play from the new position; prefer media element path
+    metronome.stop();
+    player.stop();
+    if (ctx.state === 'suspended') await ctx.resume();
+    if ((player as unknown as any).hasMedia?.()) {
+      (player as unknown as any).playMediaAt(clamped);
+    } else {
+      player.playImmediate(clamped);
+    }
+    if (bpm) metronome.setBpm(bpm);
+    const startAt = ctx.currentTime + 0.02;
+    metronome.startAt(startAt);
+    setIsPlaying(true);
+  };
+
+  const getCurrentPositionSec = (): number => {
+    const ctx = ensureAudioContext();
+    const pos = player.getPlaybackOffsetSeconds(ctx.currentTime);
+    // eslint-disable-next-line no-console
+    console.log('[POS] now', ctx.currentTime, 'pos', pos);
+    return pos;
+  };
+
+  const skipBy = (delta: number) => {
+    const base = getCurrentPositionSec();
+    seekTo(base + delta);
   };
 
   return (
@@ -126,6 +180,13 @@ export default function App() {
 
         <button onClick={onPlayPause} disabled={!selectedFile || processing}>
           {isPlaying ? 'Pause' : 'Play'}
+        </button>
+
+        <button onClick={() => { /* eslint-disable-next-line no-console */ console.log('[SKIP] -5'); skipBy(-5); }} disabled={!selectedFile || processing}>
+          -5s
+        </button>
+        <button onClick={() => { /* eslint-disable-next-line no-console */ console.log('[SKIP] +5'); skipBy(5); }} disabled={!selectedFile || processing}>
+          +5s
         </button>
       </section>
 
