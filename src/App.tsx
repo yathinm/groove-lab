@@ -6,6 +6,7 @@ import { createAudioContext } from './audio/createAudioContext';
 import { detectBpmFromAudioBuffer } from './audio/bpm';
 import { AudioPlayer } from './audio/player';
 import { Metronome } from './audio/metronome';
+import { MusicScroll } from './components/MusicScroll';
 
 export default function App() {
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -65,12 +66,7 @@ export default function App() {
     };
   }, [isPlaying, player]);
 
-  const formatTime = (s: number) => {
-    if (!isFinite(s)) return '0:00';
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, '0')}`;
-  };
+  // formatting moved to MusicScroll
 
   const onFileChange = async (file: File | null) => {
     // Stop current playback if a new file is selected while playing
@@ -238,26 +234,12 @@ export default function App() {
             onChange={(e) => setMetroVolume(parseFloat(e.target.value))}
           />
         </div>
-        <div style={{ gridColumn: '1 / span 2' }}>
-          <input
-            type="range"
-            min={0}
-            max={player.getDurationSeconds() || 0}
-            step={0.01}
-            value={positionSec}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setPositionSec(v);
-              seekTo(v);
-            }}
-            disabled={!selectedFile || processing}
-            style={{ width: '100%' }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-            <span>{formatTime(positionSec)}</span>
-            <span>{formatTime(player.getDurationSeconds() || 0)}</span>
-          </div>
-        </div>
+        <MusicScroll
+          positionSec={positionSec}
+          durationSec={player.getDurationSeconds() || 0}
+          disabled={!selectedFile || processing}
+          onSeek={(v) => { setPositionSec(v); seekTo(v); }}
+        />
       </section>
     </div>
   );
