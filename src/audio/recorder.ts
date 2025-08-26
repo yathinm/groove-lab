@@ -1,0 +1,167 @@
+export type RecorderStopResult = {
+  blob: Blob
+  objectUrl: string
+}
+
+export class MicrophoneRecorder {
+  private readonly audioContext: AudioContext
+  private mediaStream: MediaStream | null = null
+  private mediaSource: MediaStreamAudioSourceNode | null = null
+  private scriptProcessor: ScriptProcessorNode | null = null
+  private isCollecting: boolean = false
+  private recordedChunks: Float32Array[] = []
+  private monitorGain: GainNode | null = null
+
+  constructor(audioContext: AudioContext) {
+    this.audioContext = audioContext
+  }
+
+  get armed(): boolean {
+    return !!this.mediaStream
+  }
+
+  get recording(): boolean {
+    return this.isCollecting
+  }
+
+  async arm(): Promise<void> {
+    if (this.mediaStream) return
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    this.mediaStream = stream
+    this.setupNodes()
+  }
+
+  disarm(): void {
+    this.stop()
+    if (this.scriptProcessor) {
+      try { this.scriptProcessor.disconnect() } catch {}
+      this.scriptProcessor.onaudioprocess = null
+      this.scriptProcessor = null
+    }
+    if (this.mediaSource) {
+      try { this.mediaSource.disconnect() } catch {}
+      this.mediaSource = null
+    }
+    if (this.monitorGain) {
+      try { this.monitorGain.disconnect() } catch {}
+      this.monitorGain = null
+    }
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach(t => {
+        try { t.stop() } catch {}
+      })
+      this.mediaStream = null
+    }
+    this.recordedChunks = []
+  }
+
+  private setupNodes(): void {
+    if (!this.mediaStream) return
+    // Input source from microphone
+    this.mediaSource = this.audioContext.createMediaStreamSource(this.mediaStream)
+
+    // Optional monitor path (muted by default)
+    this.monitorGain = this.audioContext.createGain()
+    this.monitorGain.gain.value = 0 // set to >0 to hear yourself
+
+    // ScriptProcessor to capture raw PCM frames
+    const bufferSize = 4096
+    this.scriptProcessor = this.audioContext.createScriptProcessor(bufferSize, 1, 1)
+    this.scriptProcessor.onaudioprocess = (event) => {
+      if (!this.isCollecting) return
+      const inputData = event.inputBuffer.getChannelData(0)
+      this.recordedChunks.push(new Float32Array(inputData))
+    }
+
+    // Wiring: mic → [split] → scriptProcessor and optional monitor → destination
+    this.mediaSource.connect(this.scriptProcessor)
+    this.mediaSource.connect(this.monitorGain)
+    this.monitorGain.connect(this.audioContext.destination)
+    this.scriptProcessor.connect(this.audioContext.destination) // keep node active
+  }
+
+  start(): void {
+    if (!this.mediaStream || !this.scriptProcessor) return
+    this.recordedChunks = []
+    this.isCollecting = true
+  }
+
+  stop(): RecorderStopResult | null {
+    if (!this.isCollecting) return null
+    this.isCollecting = false
+    const wavBlob = this.encodeWavFromChunks()
+    const url = URL.createObjectURL(wavBlob)
+    return { blob: wavBlob, objectUrl: url }
+  }
+
+  private encodeWavFromChunks(): Blob {
+    const sampleRate = this.audioContext.sampleRate
+    const merged = this.mergeFloat32(this.recordedChunks)
+    const pcm16 = this.floatTo16BitPCM(merged)
+    const wavBuffer = this.buildWavFile(pcm16, sampleRate, 1)
+    return new Blob([wavBuffer], { type: 'audio/wav' })
+  }
+
+  private mergeFloat32(chunks: Float32Array[]): Float32Array {
+    const totalLength = chunks.reduce((acc, c) => acc + c.length, 0)
+    const result = new Float32Array(totalLength)
+    let offset = 0
+    for (const chunk of chunks) {
+      result.set(chunk, offset)
+      offset += chunk.length
+    }
+    return result
+  }
+
+  private floatTo16BitPCM(float32: Float32Array): Int16Array {
+    const output = new Int16Array(float32.length)
+    for (let i = 0; i < float32.length; i++) {
+      const s = Math.max(-1, Math.min(1, float32[i]))
+      output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF
+    }
+    return output
+  }
+
+  private buildWavFile(pcm16: Int16Array, sampleRate: number, numChannels: number): ArrayBuffer {
+    const bytesPerSample = 2
+    const blockAlign = numChannels * bytesPerSample
+    const byteRate = sampleRate * blockAlign
+    const dataSize = pcm16.length * bytesPerSample
+    const buffer = new ArrayBuffer(44 + dataSize)
+    const view = new DataView(buffer)
+
+    // RIFF header
+    this.writeString(view, 0, 'RIFF')
+    view.setUint32(4, 36 + dataSize, true)
+    this.writeString(view, 8, 'WAVE')
+
+    // fmt chunk
+    this.writeString(view, 12, 'fmt ')
+    view.setUint32(16, 16, true) // Subchunk1Size (16 for PCM)
+    view.setUint16(20, 1, true) // AudioFormat (1 = PCM)
+    view.setUint16(22, numChannels, true)
+    view.setUint32(24, sampleRate, true)
+    view.setUint32(28, byteRate, true)
+    view.setUint16(32, blockAlign, true)
+    view.setUint16(34, bytesPerSample * 8, true)
+
+    // data chunk
+    this.writeString(view, 36, 'data')
+    view.setUint32(40, dataSize, true)
+
+    // PCM samples
+    let offset = 44
+    for (let i = 0; i < pcm16.length; i++, offset += 2) {
+      view.setInt16(offset, pcm16[i], true)
+    }
+    return buffer
+  }
+
+  private writeString(view: DataView, offset: number, str: string) {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i))
+    }
+  }
+}
+
+

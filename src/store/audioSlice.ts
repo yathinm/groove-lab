@@ -11,6 +11,10 @@ export type AudioState = {
   durationSec: number
   trackVolume: number
   metroVolume: number
+  // Recording
+  recordArmed: boolean
+  isRecording: boolean
+  recordingUrl: string | null
 }
 
 const initialState: AudioState = {
@@ -22,6 +26,9 @@ const initialState: AudioState = {
   durationSec: 0,
   trackVolume: 0.9,
   metroVolume: 0.7,
+  recordArmed: false,
+  isRecording: false,
+  recordingUrl: null,
 }
 
 export const selectFile = createAsyncThunk(
@@ -43,6 +50,25 @@ export const selectFile = createAsyncThunk(
   }
 )
 
+export const armRecording = createAsyncThunk(
+  'audio/armRecording',
+  async (_, { rejectWithValue }) => {
+    try {
+      await engineService.recorder.arm()
+      return { armed: true }
+    } catch (e) {
+      return rejectWithValue((e as Error).message || 'Microphone access denied')
+    }
+  }
+)
+
+export const disarmRecording = createAsyncThunk('audio/disarmRecording', async () => {
+  try {
+    engineService.recorder.disarm()
+  } catch {}
+  return { armed: false }
+})
+
 export const playPause = createAsyncThunk('audio/playPause', async (_, { getState }) => {
   const state = (getState() as { audio: AudioState }).audio
   const ctx = engineService.audioContext
@@ -59,11 +85,16 @@ export const playPause = createAsyncThunk('audio/playPause', async (_, { getStat
       if (state.bpm) engineService.metronome.setBpm(state.bpm)
       engineService.metronome.startAt(startAt)
     }
-    return { isPlaying: true }
+    let startedRecording = false
+    if (state.recordArmed && !engineService.recorder.recording) {
+      try { engineService.recorder.start(); startedRecording = true } catch {}
+    }
+    return { isPlaying: true, startedRecording }
   } else {
     engineService.metronome.stop()
     engineService.player.stop()
-    return { isPlaying: false }
+    const stopped = engineService.recorder.stop()
+    return { isPlaying: false, recordingUrl: stopped?.objectUrl ?? null }
   }
 })
 
@@ -105,6 +136,12 @@ const audioSlice = createSlice({
     setPositionSec(state, action: PayloadAction<number>) {
       state.positionSec = action.payload
     },
+    setRecordArmed(state, action: PayloadAction<boolean>) {
+      state.recordArmed = action.payload
+    },
+    setRecordingUrl(state, action: PayloadAction<string | null>) {
+      state.recordingUrl = action.payload
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -122,8 +159,26 @@ const audioSlice = createSlice({
         state.processing = false
         state.error = (action.payload as string) || 'Failed to process file'
       })
+      .addCase(armRecording.fulfilled, (state) => {
+        state.recordArmed = true
+        state.error = null
+      })
+      .addCase(armRecording.rejected, (state, action) => {
+        state.recordArmed = false
+        state.error = (action.payload as string) || 'Microphone access denied'
+      })
+      .addCase(disarmRecording.fulfilled, (state) => {
+        state.recordArmed = false
+      })
       .addCase(playPause.fulfilled, (state, action) => {
         state.isPlaying = action.payload.isPlaying
+        if ('startedRecording' in action.payload) {
+          state.isRecording = !!action.payload.startedRecording
+        }
+        if ('recordingUrl' in action.payload) {
+          state.isRecording = false
+          state.recordingUrl = action.payload.recordingUrl || state.recordingUrl
+        }
       })
       .addCase(seekTo.fulfilled, (state, action) => {
         state.positionSec = action.payload.positionSec
@@ -133,7 +188,7 @@ const audioSlice = createSlice({
   },
 })
 
-export const { setTrackVolume, setMetroVolume, setPositionSec } = audioSlice.actions
+export const { setTrackVolume, setMetroVolume, setPositionSec, setRecordArmed, setRecordingUrl } = audioSlice.actions
 export default audioSlice.reducer
 
 

@@ -10,7 +10,7 @@ import { VolumeControls } from './components/VolumeControls';
 import { MusicScroll } from './components/MusicScroll';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from './store';
-import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPositionSec } from './store/audioSlice';
+import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPositionSec, armRecording, disarmRecording } from './store/audioSlice';
 import { engineService } from './store/engineService';
 
 export default function App() {
@@ -31,6 +31,11 @@ export default function App() {
           disabled={!state.durationSec || state.processing}
           onPlayPause={() => dispatch(playPause() as any)}
           onSkip={(d) => dispatch(seekTo(engineService.getPositionSec() + d) as any)}
+          recordArmed={state.recordArmed}
+          isRecording={state.isRecording}
+          recordingUrl={state.recordingUrl}
+          onArm={() => dispatch(armRecording() as any)}
+          onDisarm={() => dispatch(disarmRecording() as any)}
         />
       </section>
 
