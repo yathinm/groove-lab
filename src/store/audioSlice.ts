@@ -15,6 +15,7 @@ export type AudioState = {
   recordArmed: boolean
   isRecording: boolean
   recordingUrl: string | null
+  recordingMp3Url: string | null
 }
 
 const initialState: AudioState = {
@@ -29,6 +30,7 @@ const initialState: AudioState = {
   recordArmed: false,
   isRecording: false,
   recordingUrl: null,
+  recordingMp3Url: null,
 }
 
 export const selectFile = createAsyncThunk(
@@ -63,10 +65,19 @@ export const armRecording = createAsyncThunk(
 )
 
 export const disarmRecording = createAsyncThunk('audio/disarmRecording', async () => {
+  let recordingUrl: string | null = null
+  let recordingMp3Url: string | null = null
+  try {
+    const stopped = engineService.recorder.stop()
+    if (stopped) {
+      recordingUrl = stopped.wavUrl
+      recordingMp3Url = stopped.mp3Url ?? null
+    }
+  } catch {}
   try {
     engineService.recorder.disarm()
   } catch {}
-  return { armed: false }
+  return { armed: false, recordingUrl, recordingMp3Url }
 })
 
 export const playPause = createAsyncThunk('audio/playPause', async (_, { getState }) => {
@@ -94,7 +105,7 @@ export const playPause = createAsyncThunk('audio/playPause', async (_, { getStat
     engineService.metronome.stop()
     engineService.player.stop()
     const stopped = engineService.recorder.stop()
-    return { isPlaying: false, recordingUrl: stopped?.objectUrl ?? null }
+    return { isPlaying: false, recordingUrl: stopped?.wavUrl ?? null, recordingMp3Url: stopped?.mp3Url ?? null }
   }
 })
 
@@ -167,8 +178,11 @@ const audioSlice = createSlice({
         state.recordArmed = false
         state.error = (action.payload as string) || 'Microphone access denied'
       })
-      .addCase(disarmRecording.fulfilled, (state) => {
+      .addCase(disarmRecording.fulfilled, (state, action) => {
         state.recordArmed = false
+        state.isRecording = false
+        if (action.payload.recordingUrl) state.recordingUrl = action.payload.recordingUrl
+        if (action.payload.recordingMp3Url) state.recordingMp3Url = action.payload.recordingMp3Url
       })
       .addCase(playPause.fulfilled, (state, action) => {
         state.isPlaying = action.payload.isPlaying
@@ -178,6 +192,7 @@ const audioSlice = createSlice({
         if ('recordingUrl' in action.payload) {
           state.isRecording = false
           state.recordingUrl = action.payload.recordingUrl || state.recordingUrl
+          state.recordingMp3Url = action.payload.recordingMp3Url || state.recordingMp3Url
         }
       })
       .addCase(seekTo.fulfilled, (state, action) => {

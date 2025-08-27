@@ -1,6 +1,10 @@
+import type lamejsNS from 'lamejs'
+
 export type RecorderStopResult = {
-  blob: Blob
-  objectUrl: string
+  wavBlob: Blob
+  wavUrl: string
+  mp3Blob?: Blob
+  mp3Url?: string
 }
 
 export class MicrophoneRecorder {
@@ -26,7 +30,16 @@ export class MicrophoneRecorder {
 
   async arm(): Promise<void> {
     if (this.mediaStream) return
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    const desiredRate = this.audioContext.sampleRate
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        channelCount: 1,
+        sampleRate: desiredRate,
+      } as MediaTrackConstraints,
+    })
     this.mediaStream = stream
     this.setupNodes()
   }
@@ -90,8 +103,16 @@ export class MicrophoneRecorder {
     if (!this.isCollecting) return null
     this.isCollecting = false
     const wavBlob = this.encodeWavFromChunks()
-    const url = URL.createObjectURL(wavBlob)
-    return { blob: wavBlob, objectUrl: url }
+    const wavUrl = URL.createObjectURL(wavBlob)
+    let mp3Blob: Blob | undefined
+    let mp3Url: string | undefined
+    try {
+      mp3Blob = this.encodeMp3FromChunks()
+      mp3Url = URL.createObjectURL(mp3Blob)
+    } catch {
+      // ignore MP3 failure - WAV will still be available
+    }
+    return { wavBlob, wavUrl, mp3Blob, mp3Url }
   }
 
   private encodeWavFromChunks(): Blob {
@@ -100,6 +121,29 @@ export class MicrophoneRecorder {
     const pcm16 = this.floatTo16BitPCM(merged)
     const wavBuffer = this.buildWavFile(pcm16, sampleRate, 1)
     return new Blob([wavBuffer], { type: 'audio/wav' })
+  }
+
+  private encodeMp3FromChunks(): Blob {
+    const lamejs = (require('lamejs') as typeof lamejsNS)
+    const sampleRate = this.audioContext.sampleRate
+    const merged = this.mergeFloat32(this.recordedChunks)
+    const normalized = this.normalizeFloat32(merged, 0.95)
+    const pcm16 = this.floatTo16BitPCM(normalized)
+
+    const channels = 1
+    const kbps = 192
+    const encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps)
+
+    const samplesPerFrame = 1152
+    let mp3Data: Uint8Array[] = []
+    for (let i = 0; i < pcm16.length; i += samplesPerFrame) {
+      const left = pcm16.subarray(i, i + samplesPerFrame)
+      const mp3buf = encoder.encodeBuffer(left)
+      if (mp3buf.length > 0) mp3Data.push(mp3buf)
+    }
+    const endBuf = encoder.flush()
+    if (endBuf.length > 0) mp3Data.push(endBuf)
+    return new Blob(mp3Data, { type: 'audio/mpeg' })
   }
 
   private mergeFloat32(chunks: Float32Array[]): Float32Array {
@@ -111,6 +155,19 @@ export class MicrophoneRecorder {
       offset += chunk.length
     }
     return result
+  }
+
+  private normalizeFloat32(float32: Float32Array, targetPeak: number = 0.98): Float32Array {
+    let peak = 0
+    for (let i = 0; i < float32.length; i++) {
+      const v = Math.abs(float32[i])
+      if (v > peak) peak = v
+    }
+    if (peak === 0) return float32
+    const gain = targetPeak / peak
+    const out = new Float32Array(float32.length)
+    for (let i = 0; i < float32.length; i++) out[i] = float32[i] * gain
+    return out
   }
 
   private floatTo16BitPCM(float32: Float32Array): Int16Array {

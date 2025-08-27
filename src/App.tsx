@@ -34,10 +34,25 @@ export default function App() {
           recordArmed={state.recordArmed}
           isRecording={state.isRecording}
           recordingUrl={state.recordingUrl}
+          recordingMp3Url={state.recordingMp3Url}
           onArm={() => dispatch(armRecording() as any)}
           onDisarm={() => dispatch(disarmRecording() as any)}
         />
       </section>
+
+      {(state.recordingMp3Url || state.recordingUrl) && (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {state.recordingMp3Url && (
+            <>
+              <button onClick={() => { if (state.recordingMp3Url) window.open(state.recordingMp3Url, '_blank') }}>Save MP3</button>
+              <audio src={state.recordingMp3Url} controls />
+            </>
+          )}
+          {state.recordingUrl && (
+            <button onClick={() => { if (state.recordingUrl) window.open(state.recordingUrl, '_blank') }}>Save WAV</button>
+          )}
+        </div>
+      )}
 
       <VolumeControls
         trackVolume={state.trackVolume}
