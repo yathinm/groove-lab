@@ -33,25 +33,22 @@ export default function App() {
           onSkip={(d) => dispatch(seekTo(engineService.getPositionSec() + d) as any)}
           recordArmed={state.recordArmed}
           isRecording={state.isRecording}
-          recordingUrl={state.recordingUrl}
-          recordingMp3Url={state.recordingMp3Url}
           onArm={() => dispatch(armRecording() as any)}
           onDisarm={() => dispatch(disarmRecording() as any)}
         />
       </section>
 
-      {(state.recordingMp3Url || state.recordingUrl) && (
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          {state.recordingMp3Url && (
-            <>
-              <button onClick={() => { if (state.recordingMp3Url) window.open(state.recordingMp3Url, '_blank') }}>Save MP3</button>
-              <audio src={state.recordingMp3Url} controls />
-            </>
-          )}
-          {state.recordingUrl && (
-            <button onClick={() => { if (state.recordingUrl) window.open(state.recordingUrl, '_blank') }}>Save WAV</button>
-          )}
-        </div>
+      {(state.recordingUrl || state.recordingMp3Url) && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <strong>Recorded track</strong>
+          <audio
+            src={state.recordingMp3Url || state.recordingUrl || undefined}
+            controls
+            style={{ width: '100%' }}
+            onCanPlay={() => { /* eslint-disable-next-line no-console */ console.log('[UI] audio element can play recording') }}
+            onError={(e) => { /* eslint-disable-next-line no-console */ console.error('[UI] audio element error', e) }}
+          />
+        </section>
       )}
 
       <VolumeControls

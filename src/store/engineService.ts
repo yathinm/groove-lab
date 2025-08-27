@@ -8,6 +8,7 @@ class EngineService {
   readonly player: AudioPlayer
   readonly metronome: Metronome
   readonly recorder: MicrophoneRecorder
+  private tracks: AudioBuffer[] = []
 
   constructor() {
     this.ctx = createAudioContext()
@@ -22,6 +23,37 @@ class EngineService {
 
   getPositionSec(): number {
     return this.player.getPlaybackOffsetSeconds(this.ctx.currentTime)
+  }
+
+  // Tracks management
+  resetTracks(): void {
+    this.tracks = []
+  }
+
+  addTrack(buffer: AudioBuffer): void {
+    this.tracks.push(buffer)
+  }
+
+  getTracks(): ReadonlyArray<AudioBuffer> {
+    return this.tracks
+  }
+
+  async decodeFromBlobAsAudioBuffer(blob: Blob): Promise<AudioBuffer> {
+    const objectUrl = URL.createObjectURL(blob)
+    try {
+      const response = await fetch(objectUrl)
+      const arrayBuffer = await response.arrayBuffer()
+      const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer)
+      return audioBuffer
+    } finally {
+      try { URL.revokeObjectURL(objectUrl) } catch {}
+    }
+  }
+
+  async addTrackFromBlob(blob: Blob): Promise<AudioBuffer> {
+    const audioBuffer = await this.decodeFromBlobAsAudioBuffer(blob)
+    this.addTrack(audioBuffer)
+    return audioBuffer
   }
 }
 

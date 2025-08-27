@@ -41,6 +41,8 @@ export class MicrophoneRecorder {
       } as MediaTrackConstraints,
     })
     this.mediaStream = stream
+    // eslint-disable-next-line no-console
+    console.log('[RECORDER] armed: mediaStream tracks', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: (t as any).readyState })))
     this.setupNodes()
   }
 
@@ -84,6 +86,8 @@ export class MicrophoneRecorder {
       if (!this.isCollecting) return
       const inputData = event.inputBuffer.getChannelData(0)
       this.recordedChunks.push(new Float32Array(inputData))
+      // eslint-disable-next-line no-console
+      if (this.recordedChunks.length % 50 === 0) console.log('[RECORDER] collecting chunks', { count: this.recordedChunks.length, chunkLen: inputData.length })
     }
 
     // Wiring: mic → [split] → scriptProcessor and optional monitor → destination
@@ -97,11 +101,15 @@ export class MicrophoneRecorder {
     if (!this.mediaStream || !this.scriptProcessor) return
     this.recordedChunks = []
     this.isCollecting = true
+    // eslint-disable-next-line no-console
+    console.log('[RECORDER] start collecting')
   }
 
   stop(): RecorderStopResult | null {
     if (!this.isCollecting) return null
     this.isCollecting = false
+    // eslint-disable-next-line no-console
+    console.log('[RECORDER] stop collecting: chunks', this.recordedChunks.length)
     const wavBlob = this.encodeWavFromChunks()
     const wavUrl = URL.createObjectURL(wavBlob)
     let mp3Blob: Blob | undefined
@@ -112,6 +120,8 @@ export class MicrophoneRecorder {
     } catch {
       // ignore MP3 failure - WAV will still be available
     }
+    // eslint-disable-next-line no-console
+    console.log('[RECORDER] stop result', { wavSize: wavBlob.size, hasMp3: !!mp3Blob })
     return { wavBlob, wavUrl, mp3Blob, mp3Url }
   }
 

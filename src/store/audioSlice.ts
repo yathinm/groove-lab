@@ -37,16 +37,25 @@ export const selectFile = createAsyncThunk(
   'audio/selectFile',
   async (file: File | null, { rejectWithValue }) => {
     try {
+      // eslint-disable-next-line no-console
+      console.log('[AUDIO] selectFile', { hasFile: !!file, name: file?.name })
       if (!file) return { durationSec: 0, bpm: null as number | null }
       const ctx = engineService.audioContext
       const arrayBuffer = await file.arrayBuffer()
       const decoded = await ctx.decodeAudioData(arrayBuffer)
       engineService.player.setBuffer(decoded)
       engineService.player.setMediaFile(file)
+      // Seed tracks with the original song buffer
+      engineService.resetTracks()
+      engineService.addTrack(decoded)
       const bpm = await detectBpmFromAudioBuffer(decoded)
       engineService.metronome.setBpm(bpm)
+      // eslint-disable-next-line no-console
+      console.log('[AUDIO] selectFile complete', { duration: decoded.duration, bpm })
       return { durationSec: decoded.duration, bpm: Math.round(bpm) }
     } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[AUDIO] selectFile error', e)
       return rejectWithValue((e as Error).message || 'Failed to process file')
     }
   }
@@ -54,29 +63,51 @@ export const selectFile = createAsyncThunk(
 
 export const armRecording = createAsyncThunk(
   'audio/armRecording',
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
     try {
+      // eslint-disable-next-line no-console
+      console.log('[AUDIO] armRecording dispatch')
       await engineService.recorder.arm()
-      return { armed: true }
+      let startedRecording = false
+      const state = (getState() as { audio: AudioState }).audio
+      if (state.isPlaying && !engineService.recorder.recording) {
+        try { engineService.recorder.start(); startedRecording = true } catch {}
+      }
+      // eslint-disable-next-line no-console
+      console.log('[AUDIO] armRecording success', { startedRecording, isPlaying: state.isPlaying })
+      return { armed: true, startedRecording }
     } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[AUDIO] armRecording error', e)
       return rejectWithValue((e as Error).message || 'Microphone access denied')
     }
   }
 )
 
 export const disarmRecording = createAsyncThunk('audio/disarmRecording', async () => {
+  // eslint-disable-next-line no-console
+  console.log('[AUDIO] disarmRecording dispatch')
   let recordingUrl: string | null = null
   let recordingMp3Url: string | null = null
   try {
     const stopped = engineService.recorder.stop()
     if (stopped) {
+      // eslint-disable-next-line no-console
+      console.log('[AUDIO] recorder.stop() returned', { hasWav: !!stopped.wavBlob, wavSize: stopped.wavBlob.size, hasMp3: !!stopped.mp3Blob })
       recordingUrl = stopped.wavUrl
       recordingMp3Url = stopped.mp3Url ?? null
+      // Decode and store the recorded WAV as a new track in-app
+      // Fire-and-forget to avoid delaying UI update
+      void engineService.addTrackFromBlob(stopped.wavBlob)
+        .then((buf) => { /* eslint-disable-next-line no-console */ console.log('[AUDIO] decoded WAV added as track', { duration: buf.duration }) })
+        .catch((e) => { /* eslint-disable-next-line no-console */ console.error('[AUDIO] failed to decode/add recorded WAV', e) })
     }
   } catch {}
   try {
     engineService.recorder.disarm()
   } catch {}
+  // eslint-disable-next-line no-console
+  console.log('[AUDIO] disarmRecording done', { recordingUrl, recordingMp3Url })
   return { armed: false, recordingUrl, recordingMp3Url }
 })
 
@@ -84,6 +115,8 @@ export const playPause = createAsyncThunk('audio/playPause', async (_, { getStat
   const state = (getState() as { audio: AudioState }).audio
   const ctx = engineService.audioContext
   if (!state.isPlaying) {
+    // eslint-disable-next-line no-console
+    console.log('[AUDIO] playPause -> play', { positionSec: state.positionSec, recordArmed: state.recordArmed })
     if (ctx.state === 'suspended') await ctx.resume()
     if ((engineService.player as unknown as any).hasMedia?.()) {
       ;(engineService.player as unknown as any).playMediaAt(state.positionSec)
@@ -102,9 +135,17 @@ export const playPause = createAsyncThunk('audio/playPause', async (_, { getStat
     }
     return { isPlaying: true, startedRecording }
   } else {
+    // eslint-disable-next-line no-console
+    console.log('[AUDIO] playPause -> pause')
     engineService.metronome.stop()
     engineService.player.stop()
     const stopped = engineService.recorder.stop()
+    if (stopped) {
+      // Fire-and-forget so UI updates immediately with blob URL
+      void engineService.addTrackFromBlob(stopped.wavBlob)
+        .then(() => { /* eslint-disable-next-line no-console */ console.log('[AUDIO] appended recorded track on pause') })
+        .catch(() => {})
+    }
     return { isPlaying: false, recordingUrl: stopped?.wavUrl ?? null, recordingMp3Url: stopped?.mp3Url ?? null }
   }
 })
@@ -170,9 +211,12 @@ const audioSlice = createSlice({
         state.processing = false
         state.error = (action.payload as string) || 'Failed to process file'
       })
-      .addCase(armRecording.fulfilled, (state) => {
+      .addCase(armRecording.fulfilled, (state, action) => {
         state.recordArmed = true
         state.error = null
+        if ('startedRecording' in action.payload) {
+          state.isRecording = !!(action.payload as any).startedRecording
+        }
       })
       .addCase(armRecording.rejected, (state, action) => {
         state.recordArmed = false
