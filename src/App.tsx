@@ -2,6 +2,7 @@
 
 import './App.css';
 //
+import { useEffect } from 'react';
 import { HeaderInfo } from './components/HeaderInfo';
 import { FileUpload } from './components/FileUpload';
 import { BPMCard } from './components/BPMCard';
@@ -17,6 +18,18 @@ export default function App() {
   const dispatch = useDispatch();
   const state = useSelector((s: RootState) => s.audio);
   const positionSec = state.positionSec;
+
+  // Keep UI position in sync while playing
+  useEffect(() => {
+    if (!state.isPlaying) return;
+    const intervalMs = 1000 / 30; // ~30fps
+    const id = setInterval(() => {
+      const pos = engineService.getPositionSec();
+      // Dispatch frequently to keep slider smooth
+      dispatch(setPositionSec(pos));
+    }, intervalMs);
+    return () => clearInterval(id);
+  }, [state.isPlaying, dispatch]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
