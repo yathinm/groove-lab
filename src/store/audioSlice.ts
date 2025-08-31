@@ -71,6 +71,51 @@ export const selectFile = createAsyncThunk(
   }
 )
 
+export const loadProject = createAsyncThunk(
+  'audio/loadProject',
+  async (urls: string[], { rejectWithValue }) => {
+    try {
+      // eslint-disable-next-line no-console
+      console.log('[AUDIO] loadProject', { urls })
+      const ctx = engineService.audioContext
+      const fetchDecode = async (url: string) => {
+        const res = await fetch(url)
+        if (!res.ok) throw new Error(`Failed to fetch ${url} (${res.status})`)
+        const ab = await res.arrayBuffer()
+        const decoded = await ctx.decodeAudioData(ab)
+        return decoded
+      }
+
+      engineService.resetTracks()
+      const buffers: AudioBuffer[] = []
+      for (const u of urls) {
+        try {
+          const buf = await fetchDecode(u)
+          buffers.push(buf)
+          engineService.addTrack(buf)
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('[AUDIO] skipping track due to fetch/decode error', u, e)
+        }
+      }
+
+      const original = buffers[0]
+      let bpm: number | null = null
+      if (original) {
+        const detected = await detectBpmFromAudioBuffer(original)
+        bpm = Math.round(detected)
+        engineService.metronome.setBpm(detected)
+      }
+      const durationSec = original ? original.duration : 0
+      return { durationSec, bpm, positionSec: 0 }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[AUDIO] loadProject error', e)
+      return rejectWithValue((e as Error).message || 'Failed to load project')
+    }
+  }
+)
+
 export const armRecording = createAsyncThunk(
   'audio/armRecording',
   async (_, { getState, rejectWithValue }) => {
@@ -281,6 +326,21 @@ const audioSlice = createSlice({
       .addCase(selectFile.rejected, (state, action) => {
         state.processing = false
         state.error = (action.payload as string) || 'Failed to process file'
+      })
+      .addCase(loadProject.pending, (state) => {
+        state.processing = true
+        state.error = null
+      })
+      .addCase(loadProject.fulfilled, (state, action) => {
+        state.processing = false
+        state.durationSec = action.payload.durationSec
+        state.bpm = action.payload.bpm
+        state.positionSec = 0
+        state.playMode = 'combined'
+      })
+      .addCase(loadProject.rejected, (state, action) => {
+        state.processing = false
+        state.error = (action.payload as string) || 'Failed to load project'
       })
       .addCase(armRecording.fulfilled, (state, action) => {
         state.recordArmed = true

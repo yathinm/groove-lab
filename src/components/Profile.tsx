@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 
+
 type ProjectRow = {
   name: string
   settings: {
