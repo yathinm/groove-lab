@@ -13,13 +13,14 @@ async function blobFromObjectUrl(objectUrl: string): Promise<Blob> {
   return res.blob()
 }
 
-export async function uploadAudio(userId: string, audioBlob: Blob, fileName: string): Promise<string | null> {
-  const safeName = sanitizeFileName(fileName)
-  const filePath = `${userId}/${Date.now()}_${safeName}.wav`
+export async function uploadAudio(userEmail: string, audioBlob: Blob, fileBaseName: string): Promise<string | null> {
+  const safeFolder = sanitizeFileName(userEmail)
+  const safeName = sanitizeFileName(fileBaseName)
+  const filePath = `${safeFolder}/${safeName}.wav`
 
   const { error: uploadError } = await supabase.storage
     .from('Project-Audio')
-    .upload(filePath, audioBlob, { contentType: 'audio/wav', cacheControl: '3600', upsert: false })
+    .upload(filePath, audioBlob, { contentType: 'audio/wav', cacheControl: '3600', upsert: true })
 
   if (uploadError) {
     // eslint-disable-next-line no-console
@@ -125,13 +126,14 @@ function writeString(view: DataView, offset: number, str: string) {
 
 export async function handleSaveProject(projectName: string, user: User, choices: SaveChoices): Promise<boolean> {
   const state = store.getState().audio
+  const userEmail = user.email || 'unknown'
 
   // Gather latest recorded WAV from in-memory URL (if any)
   const recordedBlobs: Array<{ blob: Blob; name: string }> = []
   if (choices.saveRecording && state.recordingUrl) {
     try {
       const wavBlob = await blobFromObjectUrl(state.recordingUrl)
-      recordedBlobs.push({ blob: wavBlob, name: 'recording' })
+      recordedBlobs.push({ blob: wavBlob, name: projectName })
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Failed to read recorded audio blob', e)
@@ -142,7 +144,10 @@ export async function handleSaveProject(projectName: string, user: User, choices
   if (choices.saveCombined) {
     try {
       const combinedBlob = await renderCombinedMixdownWav()
-      if (combinedBlob) recordedBlobs.push({ blob: combinedBlob, name: 'combined' })
+      if (combinedBlob) {
+        const combinedName = choices.saveRecording ? `${projectName}-combined` : projectName
+        recordedBlobs.push({ blob: combinedBlob, name: combinedName })
+      }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Failed to render combined mixdown', e)
@@ -150,7 +155,7 @@ export async function handleSaveProject(projectName: string, user: User, choices
   }
 
   // 1) Upload all selected audio blobs
-  const audioUrls = await Promise.all(recordedBlobs.map(({ blob, name }) => uploadAudio(user.id, blob, name)))
+  const audioUrls = await Promise.all(recordedBlobs.map(({ blob, name }) => uploadAudio(userEmail, blob, name)))
 
   // 2) Prepare settings
   const projectSettings = {
