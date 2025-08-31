@@ -18,6 +18,7 @@ import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPosit
 import { engineService } from './store/engineService';
 import { supabase } from './supabaseClient';
 import Auth from './components/Auth';
+import NavBar from './components/NavBar';
 import { handleSaveProject, type SaveChoices } from './api/projects';
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
   const state = useSelector((s: RootState) => s.audio);
   const positionSec = state.positionSec;
   const [session, setSession] = useState<import('@supabase/supabase-js').Session | null>(null);
+  const [page, setPage] = useState<'home' | 'profile'>('home');
 
   // Keep UI position in sync while playing
   useEffect(() => {
@@ -67,6 +69,7 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <NavBar current={page} onNavigate={setPage} />
       <HeaderInfo />
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -129,11 +132,18 @@ export default function App() {
       </section>
 
       {/* Three explicit playback rows: Recorded (no metronome), Original (no metronome), Combined (no metronome) */}
-      <section style={{ display: 'grid', gap: 10 }}>
-        <RecordedRow />
-        <OriginalRow />
-        <CombinedRow />
-      </section>
+      {page === 'home' ? (
+        <section style={{ display: 'grid', gap: 10 }}>
+          <RecordedRow />
+          <OriginalRow />
+          <CombinedRow />
+        </section>
+      ) : (
+        <section>
+          <h3>Profile</h3>
+          <p>You are signed in.</p>
+        </section>
+      )}
 
       {/* Removed standalone audio element for recorded track to simplify UI */}
 
