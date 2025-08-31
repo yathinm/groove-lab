@@ -2,7 +2,7 @@
 
 import './App.css';
 //
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { HeaderInfo } from './components/HeaderInfo';
 import { FileUpload } from './components/FileUpload';
 import { BPMCard } from './components/BPMCard';
@@ -16,11 +16,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from './store';
 import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPositionSec, armRecording, disarmRecording, pausePlayback, toggleMetronome } from './store/audioSlice';
 import { engineService } from './store/engineService';
+import { supabase } from './supabaseClient';
+import Auth from './components/Auth';
 
 export default function App() {
   const dispatch = useDispatch();
   const state = useSelector((s: RootState) => s.audio);
   const positionSec = state.positionSec;
+  const [session, setSession] = useState<import('@supabase/supabase-js').Session | null>(null);
 
   // Keep UI position in sync while playing
   useEffect(() => {
@@ -44,6 +47,22 @@ export default function App() {
       dispatch({ type: 'audio/selectFile/fulfilled', payload: { durationSec: dur, bpm: state.bpm } });
     }
   }, [state.playMode, state.recordingUrl, state.recordingMp3Url]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (!session) {
+    return <Auth />;
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
