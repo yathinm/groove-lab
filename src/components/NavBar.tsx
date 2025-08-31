@@ -4,34 +4,26 @@ type Props = {
 }
 
 export default function NavBar({ current, onNavigate }: Props) {
-  const baseBtn: React.CSSProperties = {
+  const buttonStyle: React.CSSProperties = {
     padding: '8px 12px',
     border: '1px solid #ccc',
     background: 'white',
     cursor: 'pointer',
-  }
-  const activeBtn: React.CSSProperties = {
-    ...baseBtn,
-    fontWeight: 700,
-    borderColor: '#888',
+    fontWeight: 600,
+    color: '#000',
   }
 
+  const nextPage = current === 'home' ? 'profile' : 'home'
+  const label = nextPage === 'profile' ? 'Profile' : 'Home'
+
   return (
-    <nav style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          style={current === 'home' ? activeBtn : baseBtn}
-          onClick={() => onNavigate('home')}
-        >
-          Home
-        </button>
-        <button
-          style={current === 'profile' ? activeBtn : baseBtn}
-          onClick={() => onNavigate('profile')}
-        >
-          Profile
-        </button>
-      </div>
+    <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+      <button
+        style={buttonStyle}
+        onClick={() => onNavigate(nextPage)}
+      >
+        {label}
+      </button>
     </nav>
   )
 }
