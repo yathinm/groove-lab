@@ -56,6 +56,35 @@ export default function Profile() {
     }
   }, [])
 
+  function sanitizeName(name: string): string {
+    return name.replace(/[^a-zA-Z0-9._-]+/g, '_')
+  }
+
+  async function handleDeleteProject(name: string) {
+    const ok = window.confirm(`Delete "${name}"? This will remove the database row and audio files.`)
+    if (!ok) return
+    setError(null)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not signed in')
+      const email = user.email || 'unknown'
+      const folder = sanitizeName(email) + '/'
+      const base = sanitizeName(name)
+      const paths = [`${folder}${base}.wav`, `${folder}${base}-combined.wav`]
+      try { await supabase.storage.from('Project-Audio').remove(paths) } catch {}
+      const { error } = await supabase
+        .from('Projects')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('name', name)
+        .select()
+      if (error) throw error
+      setProjects((prev) => prev.filter((p) => p.name !== name))
+    } catch (e) {
+      setError((e as Error).message || 'Failed to delete')
+    }
+  }
+
   return (
     <section style={{ display: 'grid', gap: 12 }}>
       <h3>Profile</h3>
@@ -67,6 +96,9 @@ export default function Profile() {
           <div key={p.name} style={{ border: '1px solid #444', padding: 12, borderRadius: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <strong>{p.name}</strong>
+              <button onClick={() => void handleDeleteProject(p.name)} style={{ border: '1px solid #ccc', background: 'white', color: '#000', cursor: 'pointer' }}>
+                Delete
+              </button>
             </div>
             {p.settings?.bpm != null && (
               <div style={{ marginTop: 6, opacity: 0.8 }}>BPM: {p.settings.bpm}</div>
