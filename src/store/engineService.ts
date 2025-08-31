@@ -131,6 +131,8 @@ class EngineService {
       try { s.disconnect() } catch {}
     }
     this.activeSources = []
+    // Also stop any playback managed by the base AudioPlayer (buffer or media element)
+    try { this.player.stop() } catch {}
     this.playbackStartCtxTime = null
     this.currentMode = null
   }

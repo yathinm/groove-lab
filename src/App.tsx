@@ -7,11 +7,14 @@ import { HeaderInfo } from './components/HeaderInfo';
 import { FileUpload } from './components/FileUpload';
 import { BPMCard } from './components/BPMCard';
 import { PlaybackControls } from './components/PlaybackControls';
+import { RecordedRow } from './components/RecordedRow';
+import { OriginalRow } from './components/OriginalRow';
+import { CombinedRow } from './components/CombinedRow';
 import { VolumeControls } from './components/VolumeControls';
 import { MusicScroll } from './components/MusicScroll';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from './store';
-import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPositionSec, armRecording, disarmRecording, setPlayMode, playModeOnly, pausePlayback } from './store/audioSlice';
+import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPositionSec, armRecording, disarmRecording } from './store/audioSlice';
 import { engineService } from './store/engineService';
 
 export default function App() {
@@ -62,44 +65,11 @@ export default function App() {
         />
       </section>
 
-      {/* Three explicit playback rows: Recorded, Original, Combined */}
+      {/* Three explicit playback rows: Recorded (no metronome), Original (no metronome), Combined (no metronome) */}
       <section style={{ display: 'grid', gap: 10 }}>
-        {(() => {
-          const hasOriginal = !!engineService.getOriginalTrack();
-          const hasRecording = !!engineService.getLatestRecordingTrack();
-          const Row = ({ label, mode, disabled }: { label: string; mode: 'original' | 'recording' | 'combined'; disabled: boolean }) => {
-            const isThisMode = state.playMode === mode;
-            const isPlayingThis = engineService.isAnyPlaying() && (engineService.getCurrentMode() === mode);
-            const onClick = async () => {
-              if (isPlayingThis) {
-                await dispatch(pausePlayback() as any);
-                return;
-              }
-              if (state.isPlaying) {
-                await dispatch(pausePlayback() as any);
-              }
-              dispatch(setPlayMode(mode));
-              await Promise.resolve();
-              await dispatch(playModeOnly(mode) as any);
-            };
-            return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <button onClick={onClick} disabled={disabled}>
-                  {isPlayingThis ? 'Pause' : 'Play'}
-                </button>
-                <strong style={{ minWidth: 100 }}>{label}</strong>
-                <span style={{ opacity: 0.8, fontSize: 12 }}>{disabled ? 'Unavailable' : (isPlayingThis ? 'Now playing' : 'Ready')}</span>
-              </div>
-            );
-          };
-          return (
-            <>
-              <Row label="Recorded" mode="recording" disabled={!hasRecording} />
-              <Row label="Original" mode="original" disabled={!hasOriginal} />
-              <Row label="Combined" mode="combined" disabled={!(hasOriginal || hasRecording)} />
-            </>
-          );
-        })()}
+        <RecordedRow />
+        <OriginalRow />
+        <CombinedRow />
       </section>
 
       {(state.recordingUrl || state.recordingMp3Url) && (

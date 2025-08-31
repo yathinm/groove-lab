@@ -18,6 +18,8 @@ export type AudioState = {
   recordingMp3Url: string | null
   // Playback mode: 'original' only, 'recording' only, or 'combined'
   playMode: 'original' | 'recording' | 'combined'
+  // Which mode is currently playing (null when paused)
+  playingMode: 'original' | 'recording' | 'combined' | null
 }
 
 const initialState: AudioState = {
@@ -34,6 +36,7 @@ const initialState: AudioState = {
   recordingUrl: null,
   recordingMp3Url: null,
   playMode: 'combined',
+  playingMode: null,
 }
 
 export const selectFile = createAsyncThunk(
@@ -127,24 +130,20 @@ export const playPause = createAsyncThunk('audio/playPause', async (_, { getStat
     console.log('[AUDIO] playPause -> play', { positionSec: state.positionSec, recordArmed: state.recordArmed })
     if (ctx.state === 'suspended') await ctx.resume()
     const startAt = ctx.currentTime + 0.03
-    // Decide which buffers to play based on playMode
-    const original = engineService.getOriginalTrack()
-    const latestRec = engineService.getLatestRecordingTrack()
-    let buffers: AudioBuffer[] = []
-    if (state.playMode === 'original') buffers = original ? [original] : []
-    else if (state.playMode === 'recording') buffers = latestRec ? [latestRec] : []
-    else buffers = [original, latestRec].filter(Boolean) as AudioBuffer[]
+    // Decide which buffers to play based on current/selected mode
+    const mode = state.playingMode ?? state.playMode
+    const buffers = engineService.getBuffersForMode(mode)
     if (buffers.length === 0) return { isPlaying: false }
     // Reset position to start when playing
     const startOffset = 0
-    engineService.playBuffersAt(startAt, startOffset, buffers)
+    engineService.playBuffersAt(startAt, startOffset, buffers, mode)
     if (state.bpm) engineService.metronome.setBpm(state.bpm)
     engineService.metronome.startAt(startAt)
     let startedRecording = false
     if (state.recordArmed && !engineService.recorder.recording) {
       try { engineService.recorder.start(); startedRecording = true } catch {}
     }
-    return { isPlaying: true, startedRecording, positionSec: startOffset }
+    return { isPlaying: true, startedRecording, positionSec: startOffset, playingMode: mode }
   } else {
     // eslint-disable-next-line no-console
     console.log('[AUDIO] playPause -> pause')
@@ -157,26 +156,27 @@ export const playPause = createAsyncThunk('audio/playPause', async (_, { getStat
         .then(() => { /* eslint-disable-next-line no-console */ console.log('[AUDIO] appended recorded track on pause') })
         .catch(() => {})
     }
-    return { isPlaying: false, recordingUrl: stopped?.wavUrl ?? null, recordingMp3Url: stopped?.mp3Url ?? null }
+    return { isPlaying: false, recordingUrl: stopped?.wavUrl ?? null, recordingMp3Url: stopped?.mp3Url ?? null, playingMode: null }
   }
 })
 
 export const seekTo = createAsyncThunk('audio/seekTo', async (seconds: number, { getState }) => {
   const state = (getState() as { audio: AudioState }).audio
   const ctx = engineService.audioContext
-  const dur = engineService.getDurationForMode(state.playMode) || engineService.player.getDurationSeconds()
+  const mode = engineService.getCurrentMode() ?? state.playingMode ?? state.playMode
+  const dur = engineService.getDurationForMode(mode) || engineService.player.getDurationSeconds()
   const clamped = Math.max(0, Math.min(seconds, dur))
   engineService.metronome.stop()
   engineService.stopAll()
   if (ctx.state === 'suspended') await ctx.resume()
-  const buffers = engineService.getBuffersForMode(state.playMode)
+  const buffers = engineService.getBuffersForMode(mode)
   if (buffers.length > 0) {
     engineService.playBuffersImmediate(clamped, buffers)
   }
   if (state.bpm) engineService.metronome.setBpm(state.bpm)
   const startAt = ctx.currentTime + 0.02
   engineService.metronome.startAt(startAt)
-  return { positionSec: clamped, isPlaying: true }
+  return { positionSec: clamped, isPlaying: true, playingMode: mode }
 })
 
 export const skip = createAsyncThunk('audio/skip', async (deltaSeconds: number) => {
@@ -193,15 +193,38 @@ export const playModeOnly = createAsyncThunk('audio/playModeOnly', async (mode: 
   if (buffers.length === 0) return { isPlaying: false }
   const startAt = ctx.currentTime + 0.02
   const startOffset = 0
+  // eslint-disable-next-line no-console
+  console.log('[THUNK] playModeOnly', { mode, buffers: buffers.length })
   engineService.playBuffersAt(startAt, startOffset, buffers, mode)
-  return { isPlaying: true, positionSec: startOffset }
+  return { isPlaying: true, positionSec: startOffset, playingMode: mode, playMode: mode }
 })
 
 // Pause playback WITHOUT metronome or recording side-effects
 export const pausePlayback = createAsyncThunk('audio/pausePlayback', async () => {
-  engineService.stopAll()
+  // eslint-disable-next-line no-console
+  console.log('[THUNK] pausePlayback')
+  try { engineService.stopAll() } catch {}
   engineService.metronome.stop()
-  return { isPlaying: false }
+  return { isPlaying: false, playingMode: null }
+})
+
+// Single toggle that rows can use: switches to mode if not playing it; otherwise pauses. No metronome.
+export const toggleMode = createAsyncThunk('audio/toggleMode', async (mode: 'original' | 'recording' | 'combined') => {
+  const ctx = engineService.audioContext
+  // eslint-disable-next-line no-console
+  console.log('[THUNK] toggleMode', { mode, enginePlaying: engineService.isAnyPlaying(), engineMode: engineService.getCurrentMode() })
+  if (engineService.isAnyPlaying() && engineService.getCurrentMode() === mode) {
+    try { engineService.stopAll() } catch {}
+    return { isPlaying: false, playingMode: null }
+  }
+  const buffers = engineService.getBuffersForMode(mode)
+  if (buffers.length === 0) return { isPlaying: false, playingMode: null }
+  if (ctx.state === 'suspended') await ctx.resume()
+  try { engineService.stopAll() } catch {}
+  const startAt = ctx.currentTime + 0.02
+  const startOffset = 0
+  engineService.playBuffersAt(startAt, startOffset, buffers, mode)
+  return { isPlaying: true, playingMode: mode, positionSec: startOffset }
 })
 
 const audioSlice = createSlice({
@@ -277,18 +300,34 @@ const audioSlice = createSlice({
         if ('positionSec' in action.payload) {
           state.positionSec = (action.payload as any).positionSec
         }
+        if ('playingMode' in action.payload) {
+          state.playingMode = (action.payload as any).playingMode
+        }
       })
       .addCase(seekTo.fulfilled, (state, action) => {
         state.positionSec = action.payload.positionSec
         state.isPlaying = action.payload.isPlaying
+        if ('playingMode' in action.payload) state.playingMode = (action.payload as any).playingMode
       })
       .addCase(skip.fulfilled, () => {})
       .addCase(playModeOnly.fulfilled, (state, action) => {
         state.isPlaying = action.payload.isPlaying
         if ('positionSec' in action.payload) state.positionSec = (action.payload as any).positionSec
+        state.playingMode = (action.payload as any).playingMode ?? state.playingMode
+        if ((action.payload as any).playMode) state.playMode = (action.payload as any).playMode
       })
       .addCase(pausePlayback.fulfilled, (state, action) => {
         state.isPlaying = action.payload.isPlaying
+        state.playingMode = (action.payload as any).playingMode
+      })
+      .addCase(toggleMode.fulfilled, (state, action) => {
+        state.isPlaying = action.payload.isPlaying
+        state.playingMode = (action.payload as any).playingMode
+        if ('positionSec' in action.payload) state.positionSec = (action.payload as any).positionSec
+        // Keep selected playMode in sync when toggling to a mode
+        if (action.payload.isPlaying && (action.payload as any).playingMode) {
+          state.playMode = (action.payload as any).playingMode
+        }
       })
   },
 })
