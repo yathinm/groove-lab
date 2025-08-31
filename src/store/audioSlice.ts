@@ -140,17 +140,15 @@ export const playPause = createAsyncThunk('audio/playPause', async (_, { getStat
     // Reset position to start when playing
     const startOffset = 0
     engineService.playBuffersAt(startAt, startOffset, buffers, mode)
-    if (state.bpm) engineService.metronome.setBpm(state.bpm)
-    engineService.metronome.startAt(startAt)
+    // Metronome is controlled by toggle; do not implicitly start/stop here
     let startedRecording = false
     if (state.recordArmed && !engineService.recorder.recording) {
       try { engineService.recorder.start(); startedRecording = true } catch {}
     }
-    return { isPlaying: true, startedRecording, positionSec: startOffset, playingMode: 'metronome', metronomeOn: true }
+    return { isPlaying: true, startedRecording, positionSec: startOffset, playingMode: 'metronome' }
   } else {
     // eslint-disable-next-line no-console
     console.log('[AUDIO] playPause -> pause')
-    engineService.metronome.stop()
     engineService.stopAll()
     const stopped = engineService.recorder.stop()
     if (stopped) {
@@ -159,7 +157,7 @@ export const playPause = createAsyncThunk('audio/playPause', async (_, { getStat
         .then(() => { /* eslint-disable-next-line no-console */ console.log('[AUDIO] appended recorded track on pause') })
         .catch(() => {})
     }
-    return { isPlaying: false, recordingUrl: stopped?.wavUrl ?? null, recordingMp3Url: stopped?.mp3Url ?? null, playingMode: null, metronomeOn: false }
+    return { isPlaying: false, recordingUrl: stopped?.wavUrl ?? null, recordingMp3Url: stopped?.mp3Url ?? null, playingMode: null }
   }
 })
 
@@ -170,19 +168,14 @@ export const seekTo = createAsyncThunk('audio/seekTo', async (seconds: number, {
   const mode = (rawMode === 'metronome' ? 'original' : rawMode) as 'original' | 'recording' | 'combined'
   const dur = engineService.getDurationForMode(mode) || engineService.player.getDurationSeconds()
   const clamped = Math.max(0, Math.min(seconds, dur))
-  // Always stop metronome on seek; restart only if state.metronomeOn is true
-  engineService.metronome.stop()
+  // Do not alter metronome here; the toggle controls it
   engineService.stopAll()
   if (ctx.state === 'suspended') await ctx.resume()
   const buffers = engineService.getBuffersForMode(mode)
   if (buffers.length > 0) {
     engineService.playBuffersImmediate(clamped, buffers)
   }
-  if (state.metronomeOn) {
-    if (state.bpm) engineService.metronome.setBpm(state.bpm)
-    const startAt = ctx.currentTime + 0.02
-    engineService.metronome.startAt(startAt)
-  }
+  // If metronomeOn is true, it continues independently
   const nextPlayingMode = state.metronomeOn && state.playingMode === 'metronome' ? 'metronome' : (mode as any)
   return { positionSec: clamped, isPlaying: true, playingMode: nextPlayingMode }
 })
@@ -196,7 +189,7 @@ export const playModeOnly = createAsyncThunk('audio/playModeOnly', async (mode: 
   const state = (getState() as { audio: AudioState }).audio
   const ctx = engineService.audioContext
   if (ctx.state === 'suspended') await ctx.resume()
-  engineService.metronome.stop()
+  // Do not touch metronome; independent toggle controls it
   const buffers = engineService.getBuffersForMode(mode)
   if (buffers.length === 0) return { isPlaying: false }
   const startAt = ctx.currentTime + 0.02
@@ -204,7 +197,7 @@ export const playModeOnly = createAsyncThunk('audio/playModeOnly', async (mode: 
   // eslint-disable-next-line no-console
   console.log('[THUNK] playModeOnly', { mode, buffers: buffers.length })
   engineService.playBuffersAt(startAt, startOffset, buffers, mode)
-  return { isPlaying: true, positionSec: startOffset, playingMode: mode, playMode: mode, metronomeOn: false }
+  return { isPlaying: true, positionSec: startOffset, playingMode: mode, playMode: mode }
 })
 
 // Pause playback WITHOUT metronome or recording side-effects
@@ -212,8 +205,8 @@ export const pausePlayback = createAsyncThunk('audio/pausePlayback', async () =>
   // eslint-disable-next-line no-console
   console.log('[THUNK] pausePlayback')
   try { engineService.stopAll() } catch {}
-  engineService.metronome.stop()
-  return { isPlaying: false, playingMode: null, metronomeOn: false }
+  // Do not stop metronome here
+  return { isPlaying: false, playingMode: null }
 })
 
 // Single toggle that rows can use: switches to mode if not playing it; otherwise pauses. No metronome.
@@ -223,16 +216,16 @@ export const toggleMode = createAsyncThunk('audio/toggleMode', async (mode: 'ori
   console.log('[THUNK] toggleMode', { mode, enginePlaying: engineService.isAnyPlaying(), engineMode: engineService.getCurrentMode() })
   if (engineService.isAnyPlaying() && engineService.getCurrentMode() === mode) {
     try { engineService.stopAll() } catch {}
-    return { isPlaying: false, playingMode: null, metronomeOn: false }
+    return { isPlaying: false, playingMode: null }
   }
   const buffers = engineService.getBuffersForMode(mode)
-  if (buffers.length === 0) return { isPlaying: false, playingMode: null, metronomeOn: false }
+  if (buffers.length === 0) return { isPlaying: false, playingMode: null }
   if (ctx.state === 'suspended') await ctx.resume()
   try { engineService.stopAll() } catch {}
   const startAt = ctx.currentTime + 0.02
   const startOffset = 0
   engineService.playBuffersAt(startAt, startOffset, buffers, mode)
-  return { isPlaying: true, playingMode: mode, positionSec: startOffset, metronomeOn: false }
+  return { isPlaying: true, playingMode: mode, positionSec: startOffset }
 })
 
 const audioSlice = createSlice({
@@ -242,6 +235,17 @@ const audioSlice = createSlice({
     setTrackVolume(state, action: PayloadAction<number>) {
       state.trackVolume = action.payload
       engineService.player.setVolume(action.payload)
+    },
+    toggleMetronome(state) {
+      const ctx = engineService.audioContext
+      state.metronomeOn = !state.metronomeOn
+      if (state.metronomeOn) {
+        if (state.bpm) engineService.metronome.setBpm(state.bpm)
+        const startAt = ctx.currentTime + 0.02
+        engineService.metronome.startAt(startAt)
+      } else {
+        engineService.metronome.stop()
+      }
     },
     setPlayMode(state, action: PayloadAction<'original' | 'recording' | 'combined'>) {
       state.playMode = action.payload
@@ -297,7 +301,6 @@ const audioSlice = createSlice({
       })
       .addCase(playPause.fulfilled, (state, action) => {
         state.isPlaying = action.payload.isPlaying
-        if ('metronomeOn' in action.payload) state.metronomeOn = !!(action.payload as any).metronomeOn
         if ('startedRecording' in action.payload) {
           state.isRecording = !!action.payload.startedRecording
         }
@@ -324,12 +327,10 @@ const audioSlice = createSlice({
         if ('positionSec' in action.payload) state.positionSec = (action.payload as any).positionSec
         state.playingMode = (action.payload as any).playingMode ?? state.playingMode
         if ((action.payload as any).playMode) state.playMode = (action.payload as any).playMode
-        if ('metronomeOn' in action.payload) state.metronomeOn = !!(action.payload as any).metronomeOn
       })
       .addCase(pausePlayback.fulfilled, (state, action) => {
         state.isPlaying = action.payload.isPlaying
         state.playingMode = (action.payload as any).playingMode
-        if ('metronomeOn' in action.payload) state.metronomeOn = !!(action.payload as any).metronomeOn
       })
       .addCase(toggleMode.fulfilled, (state, action) => {
         state.isPlaying = action.payload.isPlaying
@@ -339,12 +340,11 @@ const audioSlice = createSlice({
         if (action.payload.isPlaying && (action.payload as any).playingMode) {
           state.playMode = (action.payload as any).playingMode
         }
-        if ('metronomeOn' in action.payload) state.metronomeOn = !!(action.payload as any).metronomeOn
       })
   },
 })
 
-export const { setTrackVolume, setMetroVolume, setPositionSec, setRecordArmed, setRecordingUrl, setPlayMode } = audioSlice.actions
+export const { setTrackVolume, setMetroVolume, setPositionSec, setRecordArmed, setRecordingUrl, setPlayMode, toggleMetronome } = audioSlice.actions
 export default audioSlice.reducer
 
 

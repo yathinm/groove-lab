@@ -14,7 +14,7 @@ import { VolumeControls } from './components/VolumeControls';
 import { MusicScroll } from './components/MusicScroll';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from './store';
-import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPositionSec, armRecording, disarmRecording, pausePlayback } from './store/audioSlice';
+import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPositionSec, armRecording, disarmRecording, pausePlayback, toggleMetronome } from './store/audioSlice';
 import { engineService } from './store/engineService';
 
 export default function App() {
@@ -68,6 +68,9 @@ export default function App() {
           onArm={() => dispatch(armRecording() as any)}
           onDisarm={() => dispatch(disarmRecording() as any)}
         />
+        <button onClick={() => dispatch(toggleMetronome())} disabled={!state.durationSec}>
+          {state.metronomeOn ? 'Metronome Off' : 'Metronome On'}
+        </button>
       </section>
 
       {/* Three explicit playback rows: Recorded (no metronome), Original (no metronome), Combined (no metronome) */}
