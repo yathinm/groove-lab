@@ -14,7 +14,7 @@ import { VolumeControls } from './components/VolumeControls';
 import { MusicScroll } from './components/MusicScroll';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from './store';
-import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPositionSec, armRecording, disarmRecording } from './store/audioSlice';
+import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPositionSec, armRecording, disarmRecording, pausePlayback } from './store/audioSlice';
 import { engineService } from './store/engineService';
 
 export default function App() {
@@ -54,9 +54,14 @@ export default function App() {
       <section style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
         <BPMCard bpm={state.bpm} processing={state.processing} />
         <PlaybackControls
-          isPlaying={state.isPlaying}
+          isPlaying={state.isPlaying && state.playingMode === 'metronome'}
           disabled={!state.durationSec || state.processing}
-          onPlayPause={() => dispatch(playPause() as any)}
+          onPlayPause={async () => {
+            if (state.isPlaying && state.playingMode !== 'metronome') {
+              await dispatch(pausePlayback() as any)
+            }
+            await dispatch(playPause() as any)
+          }}
           onSkip={(d) => dispatch(seekTo(engineService.getPositionSec() + d) as any)}
           recordArmed={state.recordArmed}
           isRecording={state.isRecording}
