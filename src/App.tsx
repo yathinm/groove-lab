@@ -92,6 +92,16 @@ export default function App() {
         >
           Save Project
         </button>
+        <button
+          onClick={async () => {
+            try {
+              await supabase.auth.signOut();
+            } catch {}
+          }}
+          style={{ marginLeft: 8 }}
+        >
+          Log out
+        </button>
       </div>
 
       <FileUpload disabled={false} processing={state.processing} error={state.error} onSelect={(f) => dispatch(selectFile(f) as any)} />
