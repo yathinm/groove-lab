@@ -78,13 +78,13 @@ export const armRecording = createAsyncThunk(
       // eslint-disable-next-line no-console
       console.log('[AUDIO] armRecording dispatch')
       await engineService.recorder.arm()
+      // Begin capturing immediately when armed, regardless of playback state
       let startedRecording = false
-      const state = (getState() as { audio: AudioState }).audio
-      if (state.isPlaying && !engineService.recorder.recording) {
+      if (!engineService.recorder.recording) {
         try { engineService.recorder.start(); startedRecording = true } catch {}
       }
       // eslint-disable-next-line no-console
-      console.log('[AUDIO] armRecording success', { startedRecording, isPlaying: state.isPlaying })
+      console.log('[AUDIO] armRecording success', { startedRecording })
       return { armed: true, startedRecording }
     } catch (e) {
       // eslint-disable-next-line no-console
