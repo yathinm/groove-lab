@@ -77,18 +77,7 @@ export default function App() {
         <CombinedRow />
       </section>
 
-      {(state.recordingUrl || state.recordingMp3Url) && (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <strong>Recorded track</strong>
-          <audio
-            src={state.recordingMp3Url || state.recordingUrl || undefined}
-            controls
-            style={{ width: '100%' }}
-            onCanPlay={() => { /* eslint-disable-next-line no-console */ console.log('[UI] audio element can play recording') }}
-            onError={(e) => { /* eslint-disable-next-line no-console */ console.error('[UI] audio element error', e) }}
-          />
-        </section>
-      )}
+      {/* Removed standalone audio element for recorded track to simplify UI */}
 
       <VolumeControls
         trackVolume={state.trackVolume}
