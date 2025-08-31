@@ -17,7 +17,7 @@ export async function uploadAudio(userId: string, audioBlob: Blob, fileName: str
   const filePath = `${userId}/${Date.now()}_${safeName}.wav`
 
   const { error: uploadError } = await supabase.storage
-    .from('project-audio')
+    .from('Project-Audio')
     .upload(filePath, audioBlob, { contentType: 'audio/wav', cacheControl: '3600', upsert: false })
 
   if (uploadError) {
@@ -27,7 +27,7 @@ export async function uploadAudio(userId: string, audioBlob: Blob, fileName: str
   }
 
   const { data } = supabase.storage
-    .from('project-audio')
+    .from('Project-Audio')
     .getPublicUrl(filePath)
 
   return data.publicUrl
@@ -65,7 +65,7 @@ export async function handleSaveProject(projectName: string, user: User): Promis
   }
 
   // 3) Insert project row
-  const { error } = await supabase.from('projects').insert({
+  const { error } = await supabase.from('Projects').insert({
     name: projectName,
     settings: projectSettings,
     user_id: user.id,

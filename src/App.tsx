@@ -18,6 +18,7 @@ import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPosit
 import { engineService } from './store/engineService';
 import { supabase } from './supabaseClient';
 import Auth from './components/Auth';
+import { handleSaveProject } from './api/projects';
 
 export default function App() {
   const dispatch = useDispatch();
@@ -67,6 +68,25 @@ export default function App() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <HeaderInfo />
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          onClick={async () => {
+            const projectName = window.prompt('Project name?')?.trim();
+            if (!projectName) return;
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+              alert('Please sign in to save projects.');
+              return;
+            }
+            const ok = await handleSaveProject(projectName, user);
+            alert(ok ? 'Project saved successfully!' : 'Failed to save project.');
+          }}
+          disabled={!state.durationSec || state.processing}
+        >
+          Save Project
+        </button>
+      </div>
 
       <FileUpload disabled={false} processing={state.processing} error={state.error} onSelect={(f) => dispatch(selectFile(f) as any)} />
 
