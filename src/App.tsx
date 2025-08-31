@@ -18,7 +18,7 @@ import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPosit
 import { engineService } from './store/engineService';
 import { supabase } from './supabaseClient';
 import Auth from './components/Auth';
-import { handleSaveProject } from './api/projects';
+import { handleSaveProject, type SaveChoices } from './api/projects';
 
 export default function App() {
   const dispatch = useDispatch();
@@ -74,12 +74,18 @@ export default function App() {
           onClick={async () => {
             const projectName = window.prompt('Project name?')?.trim();
             if (!projectName) return;
+            const choice = window.prompt('Save which audio? Type: recording, combined, or both')?.trim().toLowerCase();
+            if (!choice) return;
+            const choices: SaveChoices = {
+              saveRecording: choice === 'recording' || choice === 'both',
+              saveCombined: choice === 'combined' || choice === 'both',
+            };
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
               alert('Please sign in to save projects.');
               return;
             }
-            const ok = await handleSaveProject(projectName, user);
+            const ok = await handleSaveProject(projectName, user, choices);
             alert(ok ? 'Project saved successfully!' : 'Failed to save project.');
           }}
           disabled={!state.durationSec || state.processing}
