@@ -8,7 +8,6 @@ Important: for best results, wear headphones while using this application to avo
 - **Upload audio (MP3/WAV)**: Drag-and-drop or browse to load a song.
 - **Automatic BPM detection**: Uses Essentia.js WASM to estimate tempo.
 - **Synced metronome**: Toggle an accurate, scheduled metronome that follows detected BPM.
-- **Timeline scrubbing**: Seek through the track with a smooth progress bar.
 - **Recording**: Arm your mic and record directly in the browser (PCM WAV, optional MP3 creation).
 - **Track mixing modes**: Instantly switch between Original, Recorded, and Combined.
 - **Volume controls**: Independent levels for track and metronome.
@@ -97,39 +96,3 @@ create policy "Owners can delete"
   on public."Projects" for delete
   using (auth.uid() = user_id);
 ```
-
-## Usage
-1. **Sign in** with Google.
-2. **Upload** an MP3/WAV. The app decodes audio and detects BPM.
-3. **Play** from the top control; optionally toggle the **Metronome**.
-4. **Scrub** the timeline to seek. Use **Original / Recorded / Combined** rows to audition specific mixes.
-5. **Record**: Arm recording, then play. Disarm to finalize the take; your recording appears as a track.
-6. **Adjust levels**: Use Track and Metronome sliders.
-7. **Save project**: Click Save, choose what to save (recording, combined, or both). Visit **Profile** to view and play saved tracks.
-
-Tip: wear headphones to prevent your speakers from bleeding into the mic while recording.
-
-## Project Structure
-```
-src/
-  audio/           # player, metronome, recorder, BPM detection
-  api/             # Supabase upload/save flows
-  components/      # UI (Home, Profile, rows, controls, timeline)
-  config/          # UI/audio constants and provider
-  store/           # Redux slice + engine service facade
-```
-
-## Troubleshooting
-- **No audio until click**: Browsers require user interaction to start audio. Click Play once.
-- **Mic not recording**: Make sure you granted microphone permission. Headphones recommended to avoid feedback.
-- **BPM not detected**: Very short or very noisy audio might fail detection. Try another file.
-- **CORS/Storage errors**: Verify bucket name `Project-Audio` exists and is public; check your Supabase URL/key.
-- **Google sign-in redirect**: Ensure your app origin is listed in Supabase’s authorized redirect URLs.
-
-## Acknowledgements
-- Essentia.js (WASM) for tempo estimation
-- lamejs for client-side MP3 encoding
-- Supabase for Auth, DB, and Storage
-- Vite, Tailwind CSS, lucide-react
-
-
