@@ -12,7 +12,7 @@ export function VolumeControls({ trackVolume, metroVolume, onTrackVolume, onMetr
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">Track Volume</label>
         <input
-          className="w-full accent-indigo-600"
+          className="w-full accent-orange-600"
           type="range"
           min={0}
           max={1}
@@ -24,7 +24,7 @@ export function VolumeControls({ trackVolume, metroVolume, onTrackVolume, onMetr
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">Metronome Volume</label>
         <input
-          className="w-full accent-indigo-600"
+          className="w-full accent-orange-600"
           type="range"
           min={0}
           max={1}

@@ -24,11 +24,11 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-2xl bg-card-bg p-6 shadow-lg ring-1 ring-slate-700/50">
-        <h2 className="text-xl font-bold tracking-tight text-white">Welcome to Groove Lab</h2>
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-lg ring-1 ring-orange-200">
+        <h2 className="text-xl font-bold tracking-tight text-slate-900">Welcome to Groove Lab</h2>
         {error && <div className="mt-2 rounded-md bg-rose-50 p-2 text-sm font-medium text-rose-700 ring-1 ring-inset ring-rose-200">{error}</div>}
         <button
-          className="mt-4 inline-flex w-full items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50"
+          className="mt-4 inline-flex w-full items-center justify-center rounded-md bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 disabled:opacity-50"
           onClick={signInWithGoogle}
           disabled={loading}
         >

@@ -90,15 +90,15 @@ export default function Profile() {
     <section className="space-y-4">
       <h3 className="text-lg font-semibold text-white">Profile</h3>
       {loading && <p className="text-sm text-slate-300">Loading projects…</p>}
-      {error && <p className="rounded-md bg-rose-50 p-2 text-sm font-medium text-rose-700 ring-1 ring-inset ring-rose-200">{error}</p>}
+      {error && <p className="rounded-md bg-orange-50 p-2 text-sm font-medium text-orange-700 ring-1 ring-inset ring-orange-200">{error}</p>}
       {!loading && projects.length === 0 && <p className="text-sm text-gray-600">No saved projects yet.</p>}
       <div className="grid gap-4">
         {projects.map((p) => (
-          <div key={p.name} className="rounded-xl bg-card-bg p-4 shadow-sm ring-1 ring-slate-700/50">
+          <div key={p.name} className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-orange-200">
             <div className="flex items-center justify-between">
               <strong className="text-white">{p.name}</strong>
               <button
-                className="inline-flex items-center rounded-md border border-slate-600 bg-card-bg px-3 py-1.5 text-xs font-medium text-slate-200 shadow-sm hover:bg-slate-700/40"
+                className="inline-flex items-center rounded-md border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-orange-50"
                 onClick={() => void handleDeleteProject(p.name)}
               >
                 <Trash2 className="mr-2 h-4 w-4" /> Delete

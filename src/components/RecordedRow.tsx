@@ -19,9 +19,9 @@ export function RecordedRow() {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-slate-700 bg-card-bg p-3">
+    <div className="flex items-center gap-3 rounded-lg border border-orange-200 bg-white p-3">
       <button
-        className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center rounded-md bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
         onClick={onClick}
         disabled={!hasRecording}
         data-mode="recording"
