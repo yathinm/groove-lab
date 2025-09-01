@@ -21,14 +21,20 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session && location.pathname === '/') {
+        navigate('/home', { replace: true });
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session && location.pathname === '/') {
+        navigate('/home', { replace: true });
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [location.pathname, navigate]);
 
   if (!session) {
     return <Auth />;
