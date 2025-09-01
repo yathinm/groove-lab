@@ -4,40 +4,33 @@ type Props = {
 }
 
 export default function NavBar({ current, onNavigate }: Props) {
-  const buttonStyle: React.CSSProperties = {
-    padding: '8px 12px',
-    border: '1px solid #ccc',
-    background: 'white',
-    cursor: 'pointer',
-    fontWeight: 600,
-    color: '#000',
-  }
-
   const navStyle: React.CSSProperties = {
     position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
     zIndex: 1000,
-    background: 'white',
+    background: 'rgba(255,255,255,0.8)',
+    backdropFilter: 'saturate(180%) blur(10px)',
+    WebkitBackdropFilter: 'saturate(180%) blur(10px)',
     borderBottom: '1px solid #eee',
-    padding: '8px 16px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'flex-end'
   }
 
-  const nextPage = current === 'home' ? 'profile' : 'home'
-  const label = nextPage === 'profile' ? 'Profile' : 'Home'
+  const linkBase = 'inline-flex items-center rounded-lg px-3 py-2 text-sm font-semibold'
+  const inactive = linkBase + ' text-gray-700 hover:bg-gray-100'
+  const active = linkBase + ' text-teal-700 bg-teal-50 ring-1 ring-inset ring-teal-200'
 
   return (
     <nav style={navStyle}>
-      <button
-        style={buttonStyle}
-        onClick={() => onNavigate(nextPage)}
-      >
-        {label}
-      </button>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-14 items-center justify-between">
+          <div className="text-sm font-extrabold tracking-tight text-gray-900">Groove Lab</div>
+          <div className="flex items-center gap-2">
+            <button className={current === 'home' ? active : inactive} onClick={() => onNavigate('home')}>Home</button>
+            <button className={current === 'profile' ? active : inactive} onClick={() => onNavigate('profile')}>Profile</button>
+          </div>
+        </div>
+      </div>
     </nav>
   )
 }

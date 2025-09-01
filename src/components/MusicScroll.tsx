@@ -23,7 +23,7 @@ export const MusicScroll = memo(function MusicScroll({
   return (
     <div className="col-span-2">
       <input
-        className="w-full accent-indigo-600"
+        className="w-full accent-teal-600"
         type="range"
         min={0}
         max={durationSec || 0}
@@ -32,7 +32,7 @@ export const MusicScroll = memo(function MusicScroll({
         onChange={(e) => onSeek(parseFloat(e.target.value))}
         disabled={disabled}
       />
-      <div className="mt-2 flex justify-between font-mono text-xs text-gray-500">
+      <div className="mt-2 flex justify-between font-mono text-xs text-gray-600">
         <span>{formatTime(positionSec)}</span>
         <span>{formatTime(durationSec || 0)}</span>
       </div>

@@ -86,28 +86,31 @@ export default function Profile() {
   }
 
   return (
-    <section style={{ display: 'grid', gap: 12 }}>
-      <h3>Profile</h3>
-      {loading && <p>Loading projects…</p>}
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
-      {!loading && projects.length === 0 && <p>No saved projects yet.</p>}
-      <div style={{ display: 'grid', gap: 16 }}>
+    <section className="space-y-4">
+      <h3 className="text-lg font-semibold text-gray-900">Profile</h3>
+      {loading && <p className="text-sm text-gray-600">Loading projects…</p>}
+      {error && <p className="rounded-md bg-rose-50 p-2 text-sm font-medium text-rose-700 ring-1 ring-inset ring-rose-200">{error}</p>}
+      {!loading && projects.length === 0 && <p className="text-sm text-gray-600">No saved projects yet.</p>}
+      <div className="grid gap-4">
         {projects.map((p) => (
-          <div key={p.name} style={{ border: '1px solid #444', padding: 12, borderRadius: 6 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <strong>{p.name}</strong>
-              <button onClick={() => void handleDeleteProject(p.name)} style={{ border: '1px solid #ccc', background: 'white', color: '#000', cursor: 'pointer' }}>
+          <div key={p.name} className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+            <div className="flex items-center justify-between">
+              <strong className="text-gray-900">{p.name}</strong>
+              <button
+                className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                onClick={() => void handleDeleteProject(p.name)}
+              >
                 Delete
               </button>
             </div>
             {p.settings?.bpm != null && (
-              <div style={{ marginTop: 6, opacity: 0.8 }}>BPM: {p.settings.bpm}</div>
+              <div className="mt-2 text-sm text-gray-600">BPM: {p.settings.bpm}</div>
             )}
             {Array.isArray(p.settings?.trackUrls) && p.settings.trackUrls.length > 0 && (
-              <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+              <div className="mt-3 grid gap-2">
                 {p.settings.trackUrls.map((url, i) => (
-                  <div key={i} style={{ display: 'grid', gap: 4 }}>
-                    <a href={url} target="_blank" rel="noreferrer">Track {i + 1}</a>
+                  <div key={i} className="grid gap-1">
+                    <a className="text-sm font-medium text-indigo-700 hover:underline" href={url} target="_blank" rel="noreferrer">Track {i + 1}</a>
                     <audio src={url} controls preload="none" />
                   </div>
                 ))}

@@ -11,4 +11,6 @@ html, body, #root {
 
 body {
   margin: 0;
+  background: linear-gradient(180deg, rgba(236,253,245,1) 0%, rgba(240,249,255,1) 100%);
+  background-attachment: fixed;
 }
