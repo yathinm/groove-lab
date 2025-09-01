@@ -90,7 +90,6 @@ export default function Home() {
         <div className="lg:col-span-2 space-y-6">
           {/* Upload */}
           <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-orange-200">
-            <h2 className="mb-3 text-sm font-semibold text-slate-700">Upload</h2>
             <FileUpload disabled={false} processing={state.processing} error={state.error} onSelect={(f) => dispatch(selectFile(f) as any)} />
           </div>
 

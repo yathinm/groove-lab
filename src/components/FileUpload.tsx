@@ -9,12 +9,19 @@ type Props = {
 export function FileUpload({ disabled, processing, error, onSelect }: Props) {
   return (
     <section className="flex flex-col gap-3">
-      <label className="text-sm font-medium text-slate-200" htmlFor="file">Upload audio (.mp3, .wav)</label>
-      <div className="group flex items-center justify-between rounded-xl border-2 border-dashed border-gray-300 bg-white px-4 py-6 transition-colors hover:bg-gray-50">
-        <div className="flex items-center gap-2 text-sm text-slate-300">
-          <Upload className="h-4 w-4 text-gray-700" /> <span className="text-gray-700">Drag & drop your file here, or choose a file</span>
+      <div className="group flex flex-col gap-4 rounded-2xl border-2 border-dashed border-orange-300 bg-white px-6 py-8 text-center transition-colors hover:border-orange-400 hover:bg-orange-50 sm:flex-row sm:items-center sm:justify-between sm:text-left">
+        <div className="flex flex-col items-center gap-2 sm:flex-row">
+          <Upload className="h-6 w-6 text-orange-600" />
+          <div>
+            <div className="text-sm font-medium text-gray-800">Drag & drop your file here</div>
+            <div className="text-xs text-gray-600">or click Browse to select from your device</div>
+            <div className="mt-2 flex items-center justify-center gap-2 sm:justify-start">
+              <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-0.5 text-[11px] font-medium text-orange-700 ring-1 ring-inset ring-orange-200">MP3</span>
+              <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-0.5 text-[11px] font-medium text-orange-700 ring-1 ring-inset ring-orange-200">WAV</span>
+            </div>
+          </div>
         </div>
-        <label className="inline-flex cursor-pointer items-center rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500">
+        <label className="inline-flex cursor-pointer items-center justify-center self-center rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 sm:self-auto">
           Browse
           <input
             id="file"
