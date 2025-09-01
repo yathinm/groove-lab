@@ -13,11 +13,25 @@ export default function NavBar({ current, onNavigate }: Props) {
     color: '#000',
   }
 
+  const navStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    background: 'white',
+    borderBottom: '1px solid #eee',
+    padding: '8px 16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end'
+  }
+
   const nextPage = current === 'home' ? 'profile' : 'home'
   const label = nextPage === 'profile' ? 'Profile' : 'Home'
 
   return (
-    <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+    <nav style={navStyle}>
       <button
         style={buttonStyle}
         onClick={() => onNavigate(nextPage)}

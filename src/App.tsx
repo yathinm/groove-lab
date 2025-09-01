@@ -34,7 +34,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: '60px' }}>
       <NavBar
         current={location.pathname === '/profile' ? 'profile' : 'home'}
         onNavigate={(p) => navigate(p === 'home' ? '/home' : '/profile')}
