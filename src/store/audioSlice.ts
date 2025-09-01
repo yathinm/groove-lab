@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { engineService } from './engineService'
 import { detectBpmFromAudioBuffer } from '../audio/bpm'
+import { defaultConfig } from '../config/constants'
 
 export type AudioState = {
   isPlaying: boolean
@@ -118,7 +119,7 @@ export const loadProject = createAsyncThunk(
 
 export const armRecording = createAsyncThunk(
   'audio/armRecording',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
       // eslint-disable-next-line no-console
       console.log('[AUDIO] armRecording dispatch')
@@ -177,7 +178,7 @@ export const playPause = createAsyncThunk('audio/playPause', async (_, { getStat
     // eslint-disable-next-line no-console
     console.log('[AUDIO] playPause -> play', { positionSec: state.positionSec, recordArmed: state.recordArmed })
     if (ctx.state === 'suspended') await ctx.resume()
-    const startAt = ctx.currentTime + 0.03
+    const startAt = ctx.currentTime + defaultConfig.audio.topLevelPlayDelaySec
     // Top play button always plays ORIGINAL with metronome, independent of selected rows
     const mode: 'original' = 'original'
     const buffers = engineService.getBuffersForMode(mode)
@@ -230,14 +231,13 @@ export const skip = createAsyncThunk('audio/skip', async (deltaSeconds: number) 
 })
 
 // Play a specific mode WITHOUT metronome or recording side-effects
-export const playModeOnly = createAsyncThunk('audio/playModeOnly', async (mode: 'original' | 'recording' | 'combined', { getState }) => {
-  const state = (getState() as { audio: AudioState }).audio
+export const playModeOnly = createAsyncThunk('audio/playModeOnly', async (mode: 'original' | 'recording' | 'combined') => {
   const ctx = engineService.audioContext
   if (ctx.state === 'suspended') await ctx.resume()
   // Do not touch metronome; independent toggle controls it
   const buffers = engineService.getBuffersForMode(mode)
   if (buffers.length === 0) return { isPlaying: false }
-  const startAt = ctx.currentTime + 0.02
+  const startAt = ctx.currentTime + defaultConfig.audio.playScheduleDelaySec
   const startOffset = 0
   // eslint-disable-next-line no-console
   console.log('[THUNK] playModeOnly', { mode, buffers: buffers.length })
@@ -267,7 +267,7 @@ export const toggleMode = createAsyncThunk('audio/toggleMode', async (mode: 'ori
   if (buffers.length === 0) return { isPlaying: false, playingMode: null }
   if (ctx.state === 'suspended') await ctx.resume()
   try { engineService.stopAll() } catch {}
-  const startAt = ctx.currentTime + 0.02
+  const startAt = ctx.currentTime + defaultConfig.audio.playScheduleDelaySec
   const startOffset = 0
   engineService.playBuffersAt(startAt, startOffset, buffers, mode)
   return { isPlaying: true, playingMode: mode, positionSec: startOffset }
@@ -286,7 +286,7 @@ const audioSlice = createSlice({
       state.metronomeOn = !state.metronomeOn
       if (state.metronomeOn) {
         if (state.bpm) engineService.metronome.setBpm(state.bpm)
-        const startAt = ctx.currentTime + 0.02
+        const startAt = ctx.currentTime + defaultConfig.audio.metronomeStartDelaySec
         engineService.metronome.startAt(startAt)
       } else {
         engineService.metronome.stop()

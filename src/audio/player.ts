@@ -1,3 +1,4 @@
+import { defaultConfig } from '../config/constants'
 export class AudioPlayer {
 	private readonly audioContext: AudioContext;
 	private readonly gainNode: GainNode;
@@ -14,7 +15,7 @@ export class AudioPlayer {
 	constructor(audioContext: AudioContext) {
 		this.audioContext = audioContext;
 		this.gainNode = this.audioContext.createGain();
-		this.gainNode.gain.value = 0.9;
+		this.gainNode.gain.value = defaultConfig.audio.defaultTrackVolume;
 		this.gainNode.connect(this.audioContext.destination);
 	}
 
@@ -24,7 +25,7 @@ export class AudioPlayer {
 
 	setVolume(volume01: number) {
 		const v = Math.min(1, Math.max(0, volume01));
-		this.gainNode.gain.setTargetAtTime(v, this.audioContext.currentTime, 0.01);
+		this.gainNode.gain.setTargetAtTime(v, this.audioContext.currentTime, defaultConfig.audio.playerVolumeSlewSec);
 	}
 
 	setBuffer(buffer: AudioBuffer) {

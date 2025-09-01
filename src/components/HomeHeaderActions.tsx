@@ -1,32 +1,34 @@
 import { LogOut, Save } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { handleSaveProject, type SaveChoices } from '../api/projects'
+import { useAppConfig } from '../config/ConfigProvider'
 
 type Props = {
   disabled: boolean
 }
 
 export function HomeHeaderActions({ disabled }: Props) {
+  const cfg = useAppConfig()
   return (
     <div className="flex items-center justify-end gap-3">
       <button
         className="inline-flex items-center rounded-md bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
         onClick={async () => {
-          const projectName = window.prompt('Project name?')?.trim()
+          const projectName = window.prompt(cfg.labels.saveProjectPrompt)?.trim()
           if (!projectName) return
-          const choice = window.prompt('Save which audio? Type: recording, combined, or both')?.trim().toLowerCase()
+          const choice = window.prompt(cfg.labels.saveChoicePrompt)?.trim().toLowerCase()
           if (!choice) return
           const choices: SaveChoices = {
-            saveRecording: choice === 'recording' || choice === 'both',
-            saveCombined: choice === 'combined' || choice === 'both',
+            saveRecording: choice === cfg.labels.saveChoiceRecording || choice === cfg.labels.saveChoiceBoth,
+            saveCombined: choice === cfg.labels.saveChoiceCombined || choice === cfg.labels.saveChoiceBoth,
           }
           const { data: { user } } = await supabase.auth.getUser()
           if (!user) {
-            alert('Please sign in to save projects.')
+            alert(cfg.labels.mustSignIn)
             return
           }
           const ok = await handleSaveProject(projectName, user, choices)
-          alert(ok ? 'Project saved successfully!' : 'Failed to save project.')
+          alert(ok ? cfg.labels.saveSuccess : cfg.labels.saveFailure)
         }}
         disabled={disabled}
       >

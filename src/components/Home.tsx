@@ -14,8 +14,10 @@ import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPosit
 import { engineService } from '../store/engineService';
 import { Timer } from 'lucide-react'
 import { HomeHeaderActions } from './HomeHeaderActions'
+import { useAppConfig } from '../config/ConfigProvider'
 
 export default function Home() {
+  const cfg = useAppConfig();
   const dispatch = useDispatch();
   const state = useSelector((s: RootState) => s.audio);
   const positionSec = state.positionSec;
@@ -23,13 +25,13 @@ export default function Home() {
   // Keep UI position in sync while playing
   useEffect(() => {
     if (!state.isPlaying) return;
-    const intervalMs = 1000 / 30; // ~30fps
+    const intervalMs = 1000 / cfg.ui.updateFps;
     const id = setInterval(() => {
       const pos = engineService.getPositionSec();
       dispatch(setPositionSec(pos));
     }, intervalMs);
     return () => clearInterval(id);
-  }, [state.isPlaying, dispatch]);
+  }, [state.isPlaying, dispatch, cfg.ui.updateFps]);
 
   // Reflect duration when mode or tracks change
   useEffect(() => {
@@ -57,7 +59,7 @@ export default function Home() {
         <div className="lg:col-span-2 space-y-6">
           {/* Upload */}
           <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-orange-200">
-            <FileUpload disabled={false} processing={state.processing} error={state.error} onSelect={(f) => dispatch(selectFile(f) as any)} />
+            <FileUpload disabled={state.processing} error={state.error} onSelect={(f) => dispatch(selectFile(f) as any)} />
           </div>
 
           {/* Timeline */}

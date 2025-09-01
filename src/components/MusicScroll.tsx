@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useAppConfig } from '../config/ConfigProvider'
 
 type MusicScrollProps = {
   positionSec: number
@@ -20,8 +21,9 @@ export const MusicScroll = memo(function MusicScroll({
   disabled,
   onSeek,
 }: MusicScrollProps) {
+  const cfg = useAppConfig()
   const progressPercent = durationSec > 0 ? Math.min(100, Math.max(0, (positionSec / durationSec) * 100)) : 0
-  const segments = [0, 25, 50, 75, 100]
+  const segments = cfg.ui.progressSegments
 
   return (
     <div className="col-span-2">

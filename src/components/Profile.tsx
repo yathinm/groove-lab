@@ -2,6 +2,7 @@ import { Trash2, Loader2, FolderOpen } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { SavedTrackRow } from './SavedTrackRow'
+import { defaultConfig } from '../config/constants'
 
 
 type ProjectRow = {
@@ -50,7 +51,7 @@ export default function Profile() {
     const poll = setInterval(async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user?.id) void fetchProjects(user.id)
-    }, 5000)
+    }, defaultConfig.polling.profileIntervalMs)
 
     return () => {
       cancelled = true

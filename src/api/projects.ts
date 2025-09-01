@@ -2,6 +2,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../supabaseClient'
 import { store } from '../store'
 import { engineService } from '../store/engineService'
+import { defaultConfig } from '../config/constants'
 
 function sanitizeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]+/g, '_')
@@ -19,8 +20,8 @@ export async function uploadAudio(userEmail: string, audioBlob: Blob, fileBaseNa
   const filePath = `${safeFolder}/${safeName}.wav`
 
   const { error: uploadError } = await supabase.storage
-    .from('Project-Audio')
-    .upload(filePath, audioBlob, { contentType: 'audio/wav', cacheControl: '3600', upsert: true })
+    .from(defaultConfig.storage.bucket)
+    .upload(filePath, audioBlob, { contentType: 'audio/wav', cacheControl: String(defaultConfig.storage.cacheControlSeconds), upsert: true })
 
   if (uploadError) {
     // eslint-disable-next-line no-console
@@ -29,7 +30,7 @@ export async function uploadAudio(userEmail: string, audioBlob: Blob, fileBaseNa
   }
 
   const { data } = supabase.storage
-    .from('Project-Audio')
+    .from(defaultConfig.storage.bucket)
     .getPublicUrl(filePath)
 
   return data.publicUrl
@@ -45,7 +46,7 @@ async function renderCombinedMixdownWav(): Promise<Blob | null> {
   const recording = engineService.getLatestRecordingTrack()
   if (!original && !recording) return null
 
-  const sampleRate = 44100
+  const sampleRate = defaultConfig.audio.sampleRate
   const durationSec = Math.max(original?.duration ?? 0, recording?.duration ?? 0)
   const numChannels = Math.max(original?.numberOfChannels ?? 1, recording?.numberOfChannels ?? 1)
   const length = Math.max(1, Math.ceil(durationSec * sampleRate))
@@ -73,7 +74,7 @@ function audioBufferToWavBlob(buffer: AudioBuffer): Blob {
   const sampleRate = buffer.sampleRate
   const interleaved = interleave(buffer)
 
-  const bytesPerSample = 2
+  const bytesPerSample = defaultConfig.audio.bytesPerSample
   const blockAlign = numChannels * bytesPerSample
   const byteRate = sampleRate * blockAlign
   const dataSize = interleaved.length * bytesPerSample

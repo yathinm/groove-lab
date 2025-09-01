@@ -1,4 +1,5 @@
 // Keep native input range; only add icons elsewhere if needed
+import { useAppConfig } from '../config/ConfigProvider'
 type Props = {
   trackVolume: number
   metroVolume: number
@@ -7,6 +8,7 @@ type Props = {
 }
 
 export function VolumeControls({ trackVolume, metroVolume, onTrackVolume, onMetroVolume }: Props) {
+  const cfg = useAppConfig()
   return (
     <div className="grid max-w-2xl grid-cols-1 gap-6 sm:grid-cols-2">
       <div>
@@ -14,9 +16,9 @@ export function VolumeControls({ trackVolume, metroVolume, onTrackVolume, onMetr
         <input
           className="w-full accent-orange-600"
           type="range"
-          min={0}
-          max={1}
-          step={0.01}
+          min={cfg.audio.volumeMin}
+          max={cfg.audio.volumeMax}
+          step={cfg.audio.volumeStep}
           value={trackVolume}
           onChange={(e) => onTrackVolume(parseFloat(e.target.value))}
         />
@@ -26,9 +28,9 @@ export function VolumeControls({ trackVolume, metroVolume, onTrackVolume, onMetr
         <input
           className="w-full accent-orange-600"
           type="range"
-          min={0}
-          max={1}
-          step={0.01}
+          min={cfg.audio.volumeMin}
+          max={cfg.audio.volumeMax}
+          step={cfg.audio.volumeStep}
           value={metroVolume}
           onChange={(e) => onMetroVolume(parseFloat(e.target.value))}
         />

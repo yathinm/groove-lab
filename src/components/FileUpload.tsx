@@ -1,12 +1,13 @@
 import { Upload } from 'lucide-react'
+import { useAppConfig } from '../config/ConfigProvider'
 type Props = {
   disabled: boolean
-  processing: boolean
   error: string | null
   onSelect: (file: File | null) => void
 }
 
-export function FileUpload({ disabled, processing, error, onSelect }: Props) {
+export function FileUpload({ disabled, error, onSelect }: Props) {
+  const cfg = useAppConfig()
   return (
     <section className="flex flex-col gap-3">
       <div className="group flex flex-col gap-4 rounded-2xl border-2 border-dashed border-orange-300 bg-white px-6 py-8 text-center transition-colors hover:border-orange-400 hover:bg-orange-50 sm:flex-row sm:items-center sm:justify-between sm:text-left">
@@ -16,8 +17,9 @@ export function FileUpload({ disabled, processing, error, onSelect }: Props) {
             <div className="text-sm font-medium text-gray-800">Drag & drop your file here</div>
             <div className="text-xs text-gray-600">or click Browse to select from your device</div>
             <div className="mt-2 flex items-center justify-center gap-2 sm:justify-start">
-              <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-0.5 text-[11px] font-medium text-orange-700 ring-1 ring-inset ring-orange-200">MP3</span>
-              <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-0.5 text-[11px] font-medium text-orange-700 ring-1 ring-inset ring-orange-200">WAV</span>
+              {cfg.upload.allowedLabels.map((label) => (
+                <span key={label} className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-0.5 text-[11px] font-medium text-orange-700 ring-1 ring-inset ring-orange-200">{label}</span>
+              ))}
             </div>
           </div>
         </div>
@@ -27,7 +29,7 @@ export function FileUpload({ disabled, processing, error, onSelect }: Props) {
             id="file"
             type="file"
             className="sr-only"
-            accept="audio/mpeg, audio/wav, .mp3, .wav, audio/*"
+            accept={cfg.upload.accept}
             disabled={disabled}
             onChange={(e) => onSelect(e.target.files?.[0] ?? null)}
           />

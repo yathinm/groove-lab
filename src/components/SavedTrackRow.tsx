@@ -1,8 +1,10 @@
 import { Play, Square } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { MusicScroll } from './MusicScroll'
+import { useAppConfig } from '../config/ConfigProvider'
 
 export function SavedTrackRow({ url, index }: { url: string, index: number }) {
+  const cfg = useAppConfig()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [positionSec, setPositionSec] = useState(0)

@@ -1,3 +1,4 @@
+import { defaultConfig } from '../config/constants'
 export class Metronome {
 	private readonly audioContext: AudioContext;
 	private readonly gainNode: GainNode;
@@ -5,13 +6,13 @@ export class Metronome {
 	private bpm = 120;
 	private lookaheadTimer: number | null = null; // setInterval id
 	private nextClickTime = 0;
-	private readonly scheduleAheadTime = 0.1; // seconds to schedule ahead
-	private readonly lookaheadMs = 25; // scheduler tick
+	private readonly scheduleAheadTime = defaultConfig.metronome.scheduleAheadTimeSec; // seconds to schedule ahead
+	private readonly lookaheadMs = defaultConfig.metronome.lookaheadMs; // scheduler tick
 
 	constructor(audioContext: AudioContext) {
 		this.audioContext = audioContext;
 		this.gainNode = this.audioContext.createGain();
-		this.gainNode.gain.value = 0.7;
+		this.gainNode.gain.value = defaultConfig.audio.defaultMetronomeVolume;
 		this.gainNode.connect(this.audioContext.destination);
 	}
 
@@ -21,7 +22,7 @@ export class Metronome {
 
 	setVolume(volume01: number) {
 		const v = Math.min(1, Math.max(0, volume01));
-		this.gainNode.gain.setTargetAtTime(v, this.audioContext.currentTime, 0.01);
+		this.gainNode.gain.setTargetAtTime(v, this.audioContext.currentTime, defaultConfig.audio.playerVolumeSlewSec);
 	}
 
 	setBpm(bpm: number) {
@@ -50,14 +51,14 @@ export class Metronome {
 		const osc = this.audioContext.createOscillator();
 		const gain = this.audioContext.createGain();
 		osc.type = 'square';
-		osc.frequency.value = 1000;
+		osc.frequency.value = defaultConfig.metronome.oscillatorFrequencyHz;
 		gain.gain.setValueAtTime(0.0001, time);
-		gain.gain.exponentialRampToValueAtTime(1.0, time + 0.001);
-		gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
+		gain.gain.exponentialRampToValueAtTime(1.0, time + defaultConfig.metronome.clickAttackSec);
+		gain.gain.exponentialRampToValueAtTime(0.0001, time + defaultConfig.metronome.clickDecaySec);
 		osc.connect(gain);
 		gain.connect(this.gainNode);
 		osc.start(time);
-		osc.stop(time + 0.06);
+		osc.stop(time + defaultConfig.metronome.clickDurationSec);
 		osc.onended = () => {
 			osc.disconnect();
 			gain.disconnect();
