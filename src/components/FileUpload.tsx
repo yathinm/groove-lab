@@ -33,7 +33,7 @@ export function FileUpload({ disabled, processing, error, onSelect }: Props) {
           />
         </label>
       </div>
-      {processing && <p className="text-sm text-indigo-600">Processing...</p>}
+      {/* removed in favor of cleaner upload UI */}
       {error && <p className="text-sm text-rose-600">{error}</p>}
     </section>
   )
