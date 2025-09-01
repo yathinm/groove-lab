@@ -40,16 +40,11 @@ export default function Home() {
   }, [state.playMode, state.recordingUrl, state.recordingMp3Url]);
 
   const metronomeButtonClass = state.metronomeOn
-    ? 'inline-flex items-center gap-2 rounded-md border border-teal-200 bg-teal-100 px-3 py-2 text-sm font-medium text-teal-800 shadow-sm hover:bg-teal-200 disabled:opacity-50 disabled:cursor-not-allowed'
+    ? 'inline-flex items-center gap-2 rounded-md border border-amber-200 bg-amber-100 px-3 py-2 text-sm font-medium text-amber-800 shadow-sm hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed'
     : 'inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
 
   return (
-    <div className="relative isolate">
-      {/* Decorative background shapes inspired by polished marketing sites */}
-      <div aria-hidden className="pointer-events-none absolute -top-24 right-0 -z-10 h-[280px] w-[480px] rounded-full bg-gradient-to-bl from-fuchsia-400 via-indigo-400 to-sky-400 opacity-30 blur-3xl" />
-      <div aria-hidden className="pointer-events-none absolute bottom-0 left-0 -z-10 h-[220px] w-[380px] rounded-full bg-gradient-to-tr from-emerald-300 via-teal-300 to-cyan-300 opacity-30 blur-3xl" />
-
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-3">
         <HeaderInfo />
@@ -93,20 +88,14 @@ export default function Home() {
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
           {/* Upload */}
-          <div className="rounded-2xl bg-white/80 p-5 shadow-lg ring-1 ring-black/5 backdrop-blur">
-            <h2 className="mb-3 text-sm font-medium text-gray-700">Upload</h2>
+          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <h2 className="mb-3 text-sm font-semibold text-slate-700">Upload</h2>
             <FileUpload disabled={false} processing={state.processing} error={state.error} onSelect={(f) => dispatch(selectFile(f) as any)} />
           </div>
 
           {/* Timeline */}
-          <div className="rounded-2xl bg-white/80 p-5 shadow-lg ring-1 ring-black/5 backdrop-blur">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-medium text-gray-700">Timeline</h2>
-              <span className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200">
-                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden className="h-3.5 w-3.5"><path d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16m.75-12.5a.75.75 0 0 0-1.5 0v5c0 .199.079.39.22.53l3 3a.75.75 0 0 0 1.06-1.06l-2.78-2.78z"/></svg>
-                Live
-              </span>
-            </div>
+          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <h2 className="mb-3 text-sm font-semibold text-slate-700">Timeline</h2>
             <div className="max-w-2xl">
               <MusicScroll
                 positionSec={positionSec}
@@ -118,8 +107,8 @@ export default function Home() {
           </div>
 
           {/* Tracks */}
-          <div className="rounded-2xl bg-white/80 p-5 shadow-lg ring-1 ring-black/5 backdrop-blur">
-            <h2 className="mb-4 text-sm font-medium text-gray-700">Tracks</h2>
+          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <h2 className="mb-4 text-sm font-semibold text-slate-700">Tracks</h2>
             <div className="grid gap-3">
               <RecordedRow />
               <OriginalRow />
@@ -131,8 +120,8 @@ export default function Home() {
         {/* Right column */}
         <div className="space-y-6">
           {/* Playback & Metronome */}
-          <div className="rounded-2xl bg-white/80 p-5 shadow-lg ring-1 ring-black/5 backdrop-blur">
-            <h2 className="mb-4 text-sm font-medium text-gray-700">Playback</h2>
+          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <h2 className="mb-4 text-sm font-semibold text-slate-700">Playback</h2>
             <div className="flex flex-wrap items-center gap-4">
               <BPMCard bpm={state.bpm} processing={state.processing} />
               <PlaybackControls
@@ -161,8 +150,8 @@ export default function Home() {
           </div>
 
           {/* Levels */}
-          <div className="rounded-2xl bg-white/80 p-5 shadow-lg ring-1 ring-black/5 backdrop-blur">
-            <h2 className="mb-4 text-sm font-medium text-gray-700">Levels</h2>
+          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <h2 className="mb-4 text-sm font-semibold text-slate-700">Levels</h2>
             <VolumeControls
               trackVolume={state.trackVolume}
               metroVolume={state.metroVolume}
@@ -171,7 +160,6 @@ export default function Home() {
             />
           </div>
         </div>
-      </div>
       </div>
     </div>
   );

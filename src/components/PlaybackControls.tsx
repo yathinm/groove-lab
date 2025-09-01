@@ -13,7 +13,7 @@ export function PlaybackControls({ isPlaying, disabled, onPlayPause, recordArmed
   return (
     <div className="flex items-center gap-3">
       <button
-        className="inline-flex items-center rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
         onClick={() => { /* eslint-disable-next-line no-console */ console.log('[UI] record button clicked', { recordArmed }); (recordArmed ? onDisarm : onArm)() }}
         disabled={disabled}
         title={recordArmed ? 'Disarm recording' : 'Arm recording'}
@@ -27,7 +27,7 @@ export function PlaybackControls({ isPlaying, disabled, onPlayPause, recordArmed
         </span>
       )}
       <button
-        className="inline-flex items-center rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
         onClick={() => { /* eslint-disable-next-line no-console */ console.log('[UI] play/pause clicked', { isPlaying }); onPlayPause() }}
         disabled={disabled}
       >

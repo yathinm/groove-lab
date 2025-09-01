@@ -23,7 +23,7 @@ export const MusicScroll = memo(function MusicScroll({
   return (
     <div className="col-span-2">
       <input
-        className="w-full accent-teal-600"
+        className="w-full accent-amber-600"
         type="range"
         min={0}
         max={durationSec || 0}

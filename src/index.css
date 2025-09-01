@@ -11,6 +11,7 @@ html, body, #root {
 
 body {
   margin: 0;
-  background: linear-gradient(180deg, rgba(236,253,245,1) 0%, rgba(240,249,255,1) 100%);
+  /* Two-color theme: slate background with subtle vertical gradient */
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
   background-attachment: fixed;
 }
