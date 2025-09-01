@@ -1,3 +1,5 @@
+import { Home as HomeIcon, User as UserIcon } from 'lucide-react'
+
 type Props = {
   current: 'home' | 'profile'
   onNavigate: (page: 'home' | 'profile') => void
@@ -5,27 +7,30 @@ type Props = {
 
 export default function NavBar({ current, onNavigate }: Props) {
   const navStyle: React.CSSProperties = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1000,
-    background: '#1E1E2E',
-    borderBottom: '1px solid #2A2A3A',
+    position: 'static',
+    zIndex: 1,
+    background: 'transparent',
   }
 
-  const linkBase = 'inline-flex items-center rounded-lg px-3 py-2 text-sm font-semibold'
-  const inactive = linkBase + ' text-slate-200 hover:bg-slate-700/30'
-  const active = linkBase + ' text-white bg-slate-700/50 ring-1 ring-inset ring-slate-600'
+  const showTarget: 'home' | 'profile' = current === 'home' ? 'profile' : 'home'
+  const Icon = showTarget === 'home' ? HomeIcon : UserIcon
+  const label = showTarget === 'home' ? 'Go to Home' : 'Go to Profile'
 
   return (
     <nav style={navStyle}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 items-center justify-between">
-          <div className="text-sm font-bold tracking-tight text-white">Groove Lab</div>
           <div className="flex items-center gap-2">
-            <button className={current === 'home' ? active : inactive} onClick={() => onNavigate('home')}>Home</button>
-            <button className={current === 'profile' ? active : inactive} onClick={() => onNavigate('profile')}>Profile</button>
+            <div className="text-sm font-bold tracking-tight text-white">Groove Lab</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              aria-label={label}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-orange-600 text-white shadow hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
+              onClick={() => onNavigate(showTarget)}
+            >
+              <Icon className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </div>

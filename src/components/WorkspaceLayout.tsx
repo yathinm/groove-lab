@@ -6,7 +6,7 @@ type Props = {
 
 export default function WorkspaceLayout({ children }: Props) {
   return (
-    <div className="min-h-screen pt-[88px]">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         {children}
       </div>
