@@ -89,7 +89,6 @@ export default function Home() {
             }
             await dispatch(playPause() as any)
           }}
-          onSkip={(d) => dispatch(seekTo(engineService.getPositionSec() + d) as any)}
           recordArmed={state.recordArmed}
           isRecording={state.isRecording}
           onArm={() => dispatch(armRecording() as any)}

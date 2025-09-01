@@ -2,7 +2,6 @@ type Props = {
   isPlaying: boolean
   disabled: boolean
   onPlayPause: () => void
-  onSkip: (deltaSeconds: number) => void
   // Recording controls
   recordArmed: boolean
   isRecording: boolean
@@ -10,7 +9,7 @@ type Props = {
   onDisarm: () => void
 }
 
-export function PlaybackControls({ isPlaying, disabled, onPlayPause, onSkip, recordArmed, isRecording, onArm, onDisarm }: Props) {
+export function PlaybackControls({ isPlaying, disabled, onPlayPause, recordArmed, isRecording, onArm, onDisarm }: Props) {
   return (
     <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
       <button onClick={() => { /* eslint-disable-next-line no-console */ console.log('[UI] record button clicked', { recordArmed }); (recordArmed ? onDisarm : onArm)() }} disabled={disabled} title={recordArmed ? 'Disarm recording' : 'Arm recording'}>
@@ -23,8 +22,6 @@ export function PlaybackControls({ isPlaying, disabled, onPlayPause, onSkip, rec
         </span>
       )}
       <button onClick={() => { /* eslint-disable-next-line no-console */ console.log('[UI] play/pause clicked', { isPlaying }); onPlayPause() }} disabled={disabled}>{isPlaying ? 'Pause' : 'Play'}</button>
-      <button onClick={() => onSkip(-5)} disabled={disabled}>-5s</button>
-      <button onClick={() => onSkip(5)} disabled={disabled}>+5s</button>
       {/* In unified workspace, we keep recordings in-app; remove external open/save buttons */}
     </div>
   )
