@@ -40,8 +40,8 @@ export default function Home() {
   }, [state.playMode, state.recordingUrl, state.recordingMp3Url]);
 
   const metronomeButtonClass = state.metronomeOn
-    ? 'inline-flex items-center gap-2 rounded-md border border-amber-200 bg-amber-100 px-3 py-2 text-sm font-medium text-amber-800 shadow-sm hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed'
-    : 'inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+    ? 'inline-flex items-center gap-2 rounded-md border border-amber-400 bg-amber-200/20 px-3 py-2 text-sm font-medium text-amber-300 shadow-sm hover:bg-amber-200/30 disabled:opacity-50 disabled:cursor-not-allowed'
+    : 'inline-flex items-center gap-2 rounded-md border border-slate-600 bg-card-bg px-3 py-2 text-sm font-medium text-slate-200 shadow-sm hover:bg-slate-700/40 disabled:opacity-50 disabled:cursor-not-allowed'
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 space-y-8">
@@ -88,14 +88,14 @@ export default function Home() {
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
           {/* Upload */}
-          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <h2 className="mb-3 text-sm font-semibold text-slate-700">Upload</h2>
+          <div className="rounded-xl bg-card-bg p-5 shadow-sm ring-1 ring-slate-200">
+            <h2 className="mb-3 text-sm font-semibold text-white">Upload</h2>
             <FileUpload disabled={false} processing={state.processing} error={state.error} onSelect={(f) => dispatch(selectFile(f) as any)} />
           </div>
 
           {/* Timeline */}
-          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <h2 className="mb-3 text-sm font-semibold text-slate-700">Timeline</h2>
+          <div className="rounded-xl bg-card-bg p-5 shadow-sm ring-1 ring-slate-200">
+            <h2 className="mb-3 text-sm font-semibold text-white">Timeline</h2>
             <div className="max-w-2xl">
               <MusicScroll
                 positionSec={positionSec}
@@ -107,8 +107,8 @@ export default function Home() {
           </div>
 
           {/* Tracks */}
-          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <h2 className="mb-4 text-sm font-semibold text-slate-700">Tracks</h2>
+          <div className="rounded-xl bg-card-bg p-5 shadow-sm ring-1 ring-slate-200">
+            <h2 className="mb-4 text-sm font-semibold text-white">Tracks</h2>
             <div className="grid gap-3">
               <RecordedRow />
               <OriginalRow />
@@ -120,8 +120,8 @@ export default function Home() {
         {/* Right column */}
         <div className="space-y-6">
           {/* Playback & Metronome */}
-          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <h2 className="mb-4 text-sm font-semibold text-slate-700">Playback</h2>
+          <div className="rounded-xl bg-card-bg p-5 shadow-sm ring-1 ring-slate-200">
+            <h2 className="mb-4 text-sm font-semibold text-white">Playback</h2>
             <div className="flex flex-wrap items-center gap-4">
               <BPMCard bpm={state.bpm} processing={state.processing} />
               <PlaybackControls
@@ -151,7 +151,7 @@ export default function Home() {
 
           {/* Levels */}
           <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <h2 className="mb-4 text-sm font-semibold text-slate-700">Levels</h2>
+            <h2 className="mb-4 text-sm font-semibold text-white">Levels</h2>
             <VolumeControls
               trackVolume={state.trackVolume}
               metroVolume={state.metroVolume}

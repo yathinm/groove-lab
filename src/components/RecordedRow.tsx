@@ -18,7 +18,7 @@ export function RecordedRow() {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3">
+    <div className="flex items-center gap-3 rounded-lg border border-slate-700 bg-card-bg p-3">
       <button
         className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
         onClick={onClick}
@@ -27,8 +27,8 @@ export function RecordedRow() {
       >
         {isPlayingThis ? 'Pause' : 'Play'}
       </button>
-      <strong className="min-w-[100px] text-gray-900">Recorded</strong>
-      <span className="text-xs text-gray-600">{!hasRecording ? 'Unavailable' : (isPlayingThis ? 'Now playing' : 'Ready')}</span>
+      <strong className="min-w-[100px] text-white">Recorded</strong>
+      <span className="text-xs text-slate-300">{!hasRecording ? 'Unavailable' : (isPlayingThis ? 'Now playing' : 'Ready')}</span>
     </div>
   )
 }

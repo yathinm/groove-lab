@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
+/* Dark theme tokens and global app background */
+@theme {
+  --color-background: #1E1E2E;
+  --color-card-bg: #2A2A3A;
+  --color-primary: #7F5AF0;
+}
+
 /* Base defaults to pair nicely with Tailwind */
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html, body, #root {
@@ -11,7 +18,5 @@ html, body, #root {
 
 body {
   margin: 0;
-  /* Two-color theme: slate background with subtle vertical gradient */
-  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
-  background-attachment: fixed;
+  @apply bg-background text-white;
 }
