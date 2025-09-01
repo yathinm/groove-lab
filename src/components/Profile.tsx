@@ -1,6 +1,7 @@
-import { Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Trash2, Play, Square, Loader2, FolderOpen } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { MusicScroll } from './MusicScroll'
 
 
 type ProjectRow = {
@@ -89,14 +90,27 @@ export default function Profile() {
   return (
     <section className="space-y-4">
       <h3 className="text-lg font-semibold text-white">Profile</h3>
-      {loading && <p className="text-sm text-slate-300">Loading projects…</p>}
+      {loading && (
+        <div className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-orange-200">
+          <Loader2 className="h-5 w-5 animate-spin text-orange-600" />
+          <span className="text-sm font-medium text-gray-700">Loading projects…</span>
+        </div>
+      )}
       {error && <p className="rounded-md bg-orange-50 p-2 text-sm font-medium text-orange-700 ring-1 ring-inset ring-orange-200">{error}</p>}
-      {!loading && projects.length === 0 && <p className="text-sm text-gray-600">No saved projects yet.</p>}
+      {!loading && projects.length === 0 && (
+        <div className="rounded-xl bg-white p-6 text-center shadow-sm ring-1 ring-orange-200">
+          <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-orange-50 ring-1 ring-inset ring-orange-200">
+            <FolderOpen className="h-5 w-5 text-orange-600" />
+          </div>
+          <div className="text-sm font-semibold text-slate-900">No saved projects yet</div>
+          <div className="mt-1 text-xs text-gray-600">Save a project from the Home page to see it here.</div>
+        </div>
+      )}
       <div className="grid gap-4">
         {projects.map((p) => (
           <div key={p.name} className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-orange-200">
             <div className="flex items-center justify-between">
-              <strong className="text-white">{p.name}</strong>
+              <strong className="text-slate-900">{p.name}</strong>
               <button
                 className="inline-flex items-center rounded-md border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-orange-50"
                 onClick={() => void handleDeleteProject(p.name)}
@@ -105,15 +119,14 @@ export default function Profile() {
               </button>
             </div>
             {p.settings?.bpm != null && (
-              <div className="mt-2 text-sm text-slate-300">BPM: {p.settings.bpm}</div>
+              <div className="mt-2">
+                <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-0.5 text-[11px] font-medium text-orange-700 ring-1 ring-inset ring-orange-200">BPM {p.settings.bpm}</span>
+              </div>
             )}
             {Array.isArray(p.settings?.trackUrls) && p.settings.trackUrls.length > 0 && (
-              <div className="mt-3 grid gap-2">
+              <div className="mt-3 grid gap-3">
                 {p.settings.trackUrls.map((url, i) => (
-                  <div key={i} className="grid gap-1">
-                    <a className="text-sm font-medium text-indigo-400 hover:underline" href={url} target="_blank" rel="noreferrer">Track {i + 1}</a>
-                    <audio src={url} controls preload="none" />
-                  </div>
+                  <SavedTrackRow key={i} url={url} index={i} />
                 ))}
               </div>
             )}
@@ -125,3 +138,60 @@ export default function Profile() {
 }
 
 
+
+function SavedTrackRow({ url, index }: { url: string, index: number }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [positionSec, setPositionSec] = useState(0)
+  const [durationSec, setDurationSec] = useState(0)
+
+  useEffect(() => {
+    const el = audioRef.current
+    if (!el) return
+    const onTime = () => setPositionSec(el.currentTime || 0)
+    const onLoaded = () => setDurationSec(el.duration || 0)
+    const onEnded = () => { setIsPlaying(false); setPositionSec(0) }
+    el.addEventListener('timeupdate', onTime)
+    el.addEventListener('loadedmetadata', onLoaded)
+    el.addEventListener('ended', onEnded)
+    return () => {
+      el.removeEventListener('timeupdate', onTime)
+      el.removeEventListener('loadedmetadata', onLoaded)
+      el.removeEventListener('ended', onEnded)
+    }
+  }, [])
+
+  useEffect(() => {
+    const el = audioRef.current
+    if (!el) return
+    if (isPlaying) el.play().catch(() => setIsPlaying(false))
+    else el.pause()
+  }, [isPlaying])
+
+  return (
+    <div className="rounded-lg border border-orange-200 bg-white p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            className="inline-flex items-center rounded-md bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => setIsPlaying((v) => !v)}
+          >
+            {isPlaying ? <Square className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
+            {isPlaying ? 'Pause' : 'Play'}
+          </button>
+          <strong className="text-slate-900">Track {index + 1}</strong>
+        </div>
+        <a className="text-xs font-medium text-orange-700 hover:underline" href={url} target="_blank" rel="noreferrer">Open</a>
+      </div>
+      <div className="mt-3">
+        <MusicScroll
+          positionSec={positionSec}
+          durationSec={durationSec}
+          disabled={!durationSec}
+          onSeek={(s) => { const el = audioRef.current; if (el) { el.currentTime = s; setPositionSec(s) } }}
+        />
+        <audio ref={audioRef} src={url} preload="metadata" />
+      </div>
+    </div>
+  )
+}

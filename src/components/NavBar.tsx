@@ -21,7 +21,6 @@ export default function NavBar({ current, onNavigate }: Props) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="text-sm font-bold tracking-tight text-white">Groove Lab</div>
           </div>
           <div className="flex items-center gap-2">
             <button
