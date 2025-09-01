@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 import Auth from './components/Auth';
 import NavBar from './components/NavBar';
+import WorkspaceLayout from './components/WorkspaceLayout';
 import { Route, Routes, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Home from './components/Home';
 import Profile from './components/Profile';
@@ -34,16 +35,18 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: '88px' }}>
+    <div>
       <NavBar
         current={location.pathname === '/profile' ? 'profile' : 'home'}
         onNavigate={(p) => navigate(p === 'home' ? '/home' : '/profile')}
       />
-      <Routes>
-        <Route path="/home" element={<Home />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="*" element={<Navigate to="/home" replace />} />
-      </Routes>
+      <WorkspaceLayout>
+        <Routes>
+          <Route path="/home" element={<Home />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
+        </Routes>
+      </WorkspaceLayout>
     </div>
   );
 }

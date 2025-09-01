@@ -44,7 +44,7 @@ export default function Home() {
     : 'inline-flex items-center gap-2 rounded-md border border-slate-600 bg-card-bg px-3 py-2 text-sm font-medium text-slate-200 shadow-sm hover:bg-slate-700/40 disabled:opacity-50 disabled:cursor-not-allowed'
 
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 space-y-8">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-3">
         <HeaderInfo />
