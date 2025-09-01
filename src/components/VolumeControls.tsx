@@ -7,10 +7,11 @@ type Props = {
 
 export function VolumeControls({ trackVolume, metroVolume, onTrackVolume, onMetroVolume }: Props) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, maxWidth: 560 }}>
+    <div className="grid max-w-2xl grid-cols-1 gap-6 sm:grid-cols-2">
       <div>
-        <label>Track Volume</label>
+        <label className="mb-1 block text-sm font-medium text-gray-700">Track Volume</label>
         <input
+          className="w-full accent-indigo-600"
           type="range"
           min={0}
           max={1}
@@ -20,8 +21,9 @@ export function VolumeControls({ trackVolume, metroVolume, onTrackVolume, onMetr
         />
       </div>
       <div>
-        <label>Metronome Volume</label>
+        <label className="mb-1 block text-sm font-medium text-gray-700">Metronome Volume</label>
         <input
+          className="w-full accent-indigo-600"
           type="range"
           min={0}
           max={1}

@@ -18,12 +18,17 @@ export function OriginalRow() {
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <button onClick={onClick} disabled={!hasOriginal} data-mode="original">
+    <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3">
+      <button
+        className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        onClick={onClick}
+        disabled={!hasOriginal}
+        data-mode="original"
+      >
         {isPlayingThis ? 'Pause' : 'Play'}
       </button>
-      <strong style={{ minWidth: 100 }}>Original</strong>
-      <span style={{ opacity: 0.8, fontSize: 12 }}>{!hasOriginal ? 'Unavailable' : (isPlayingThis ? 'Now playing' : 'Ready')}</span>
+      <strong className="min-w-[100px] text-gray-900">Original</strong>
+      <span className="text-xs text-gray-600">{!hasOriginal ? 'Unavailable' : (isPlayingThis ? 'Now playing' : 'Ready')}</span>
     </div>
   )
 }

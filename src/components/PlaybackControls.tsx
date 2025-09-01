@@ -11,18 +11,28 @@ type Props = {
 
 export function PlaybackControls({ isPlaying, disabled, onPlayPause, recordArmed, isRecording, onArm, onDisarm }: Props) {
   return (
-    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-      <button onClick={() => { /* eslint-disable-next-line no-console */ console.log('[UI] record button clicked', { recordArmed }); (recordArmed ? onDisarm : onArm)() }} disabled={disabled} title={recordArmed ? 'Disarm recording' : 'Arm recording'}>
+    <div className="flex items-center gap-3">
+      <button
+        className="inline-flex items-center rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        onClick={() => { /* eslint-disable-next-line no-console */ console.log('[UI] record button clicked', { recordArmed }); (recordArmed ? onDisarm : onArm)() }}
+        disabled={disabled}
+        title={recordArmed ? 'Disarm recording' : 'Arm recording'}
+      >
         {recordArmed ? 'Stop' : 'Record'}
       </button>
       {isRecording && (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'red', display: 'inline-block' }} />
+        <span className="inline-flex items-center gap-2 rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700">
+          <span className="h-2.5 w-2.5 rounded-full bg-rose-600 animate-pulse" />
           <span>REC</span>
         </span>
       )}
-      <button onClick={() => { /* eslint-disable-next-line no-console */ console.log('[UI] play/pause clicked', { isPlaying }); onPlayPause() }} disabled={disabled}>{isPlaying ? 'Pause' : 'Play'}</button>
-      {/* In unified workspace, we keep recordings in-app; remove external open/save buttons */}
+      <button
+        className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        onClick={() => { /* eslint-disable-next-line no-console */ console.log('[UI] play/pause clicked', { isPlaying }); onPlayPause() }}
+        disabled={disabled}
+      >
+        {isPlaying ? 'Pause' : 'Play'}
+      </button>
     </div>
   )
 }

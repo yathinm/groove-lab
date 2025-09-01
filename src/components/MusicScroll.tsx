@@ -21,8 +21,9 @@ export const MusicScroll = memo(function MusicScroll({
   onSeek,
 }: MusicScrollProps) {
   return (
-    <div style={{ gridColumn: '1 / span 2' }}>
+    <div className="col-span-2">
       <input
+        className="w-full accent-indigo-600"
         type="range"
         min={0}
         max={durationSec || 0}
@@ -30,9 +31,8 @@ export const MusicScroll = memo(function MusicScroll({
         value={positionSec}
         onChange={(e) => onSeek(parseFloat(e.target.value))}
         disabled={disabled}
-        style={{ width: '100%' }}
       />
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+      <div className="mt-2 flex justify-between font-mono text-xs text-gray-500">
         <span>{formatTime(positionSec)}</span>
         <span>{formatTime(durationSec || 0)}</span>
       </div>

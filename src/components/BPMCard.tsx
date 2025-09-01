@@ -2,9 +2,9 @@ type Props = { bpm: number | null; processing: boolean }
 
 export function BPMCard({ bpm, processing }: Props) {
   return (
-    <div style={{ border: '1px solid #ccc', padding: 12, borderRadius: 8, minWidth: 120 }}>
-      <div style={{ fontSize: 12, color: '#666' }}>Detected BPM</div>
-      <div style={{ fontSize: 28, fontWeight: 700 }}>{bpm ?? (processing ? '…' : '-')}</div>
+    <div className="min-w-[120px] rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 ring-1 ring-inset ring-emerald-200">
+      <div className="text-xs font-medium text-emerald-700">Detected BPM</div>
+      <div className="mt-1 text-3xl font-bold text-emerald-900">{bpm ?? (processing ? '…' : '-')}</div>
     </div>
   )
 }
