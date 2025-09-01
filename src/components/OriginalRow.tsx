@@ -29,8 +29,8 @@ export function OriginalRow() {
         {isPlayingThis ? <Square className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
         {isPlayingThis ? 'Pause' : 'Play'}
       </button>
-      <strong className="min-w-[100px] text-white">Original</strong>
-      <span className="text-xs text-slate-300">{!hasOriginal ? 'Unavailable' : (isPlayingThis ? 'Now playing' : 'Ready')}</span>
+      <strong className="min-w-[100px] text-slate-900">Original</strong>
+      <span className="text-xs text-slate-600">{!hasOriginal ? 'Unavailable' : (isPlayingThis ? 'Now playing' : 'Ready')}</span>
     </div>
   )
 }
