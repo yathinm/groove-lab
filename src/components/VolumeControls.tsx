@@ -1,3 +1,4 @@
+// Keep native input range; only add icons elsewhere if needed
 type Props = {
   trackVolume: number
   metroVolume: number

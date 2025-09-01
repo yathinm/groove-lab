@@ -1,3 +1,4 @@
+import { Play, Square, Mic } from 'lucide-react'
 type Props = {
   isPlaying: boolean
   disabled: boolean
@@ -18,6 +19,7 @@ export function PlaybackControls({ isPlaying, disabled, onPlayPause, recordArmed
         disabled={disabled}
         title={recordArmed ? 'Disarm recording' : 'Arm recording'}
       >
+        <Mic className="mr-2 h-4 w-4" />
         {recordArmed ? 'Stop' : 'Record'}
       </button>
       {isRecording && (
@@ -31,6 +33,7 @@ export function PlaybackControls({ isPlaying, disabled, onPlayPause, recordArmed
         onClick={() => { /* eslint-disable-next-line no-console */ console.log('[UI] play/pause clicked', { isPlaying }); onPlayPause() }}
         disabled={disabled}
       >
+        {isPlaying ? <Square className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
         {isPlaying ? 'Pause' : 'Play'}
       </button>
     </div>

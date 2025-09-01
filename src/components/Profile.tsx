@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 
@@ -100,7 +101,7 @@ export default function Profile() {
                 className="inline-flex items-center rounded-md border border-slate-600 bg-card-bg px-3 py-1.5 text-xs font-medium text-slate-200 shadow-sm hover:bg-slate-700/40"
                 onClick={() => void handleDeleteProject(p.name)}
               >
-                Delete
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
               </button>
             </div>
             {p.settings?.bpm != null && (

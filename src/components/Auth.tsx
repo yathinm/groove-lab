@@ -1,3 +1,4 @@
+import { LogIn } from 'lucide-react'
 import { useState } from 'react';
 import { supabase } from '../supabaseClient';
 
@@ -31,7 +32,7 @@ export default function Auth() {
           onClick={signInWithGoogle}
           disabled={loading}
         >
-          {loading ? 'Redirecting…' : 'Sign in with Google'}
+          <LogIn className="mr-2 h-4 w-4" /> {loading ? 'Redirecting…' : 'Sign in with Google'}
         </button>
       </div>
     </div>

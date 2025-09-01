@@ -1,3 +1,4 @@
+import { Play, Square } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import type { RootState } from '../store'
 import { engineService } from '../store/engineService'
@@ -25,6 +26,7 @@ export function CombinedRow() {
         disabled={!hasAny}
         data-mode="combined"
       >
+        {isPlayingThis ? <Square className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
         {isPlayingThis ? 'Pause' : 'Play'}
       </button>
       <strong className="min-w-[100px] text-white">Combined</strong>

@@ -14,6 +14,7 @@ import { selectFile, playPause, seekTo, setTrackVolume, setMetroVolume, setPosit
 import { engineService } from '../store/engineService';
 import { supabase } from '../supabaseClient';
 import { handleSaveProject, type SaveChoices } from '../api/projects';
+import { LogOut, Save, Timer } from 'lucide-react'
 
 export default function Home() {
   const dispatch = useDispatch();
@@ -70,7 +71,7 @@ export default function Home() {
             }}
             disabled={!state.durationSec || state.processing}
           >
-            Save Project
+            <Save className="mr-2 h-4 w-4" /> Save Project
           </button>
           <button
             className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
@@ -78,7 +79,7 @@ export default function Home() {
               try { await supabase.auth.signOut(); } catch {}
             }}
           >
-            Log out
+            <LogOut className="mr-2 h-4 w-4" /> Log out
           </button>
         </div>
       </div>
@@ -143,7 +144,7 @@ export default function Home() {
                 onClick={() => dispatch(toggleMetronome())}
                 disabled={!state.durationSec}
               >
-                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden className="h-4 w-4"><path d="M4 10a6 6 0 1 1 12 0 6 6 0 0 1-12 0m5.25-3.75A.75.75 0 0 0 8.5 7v2.25H6.25a.75.75 0 0 0 0 1.5H8.5V13a.75.75 0 0 0 1.5 0v-2.25h2.25a.75.75 0 0 0 0-1.5H10V7a.75.75 0 0 0-.75-.75"/></svg>
+                <Timer className="mr-2 h-4 w-4" />
                 {state.metronomeOn ? 'Metronome Off' : 'Metronome On'}
               </button>
             </div>
