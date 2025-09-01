@@ -2,6 +2,21 @@ export type Config = {
   ui: {
     updateFps: number
     progressSegments: number[]
+    sectionPaddingSm: string
+    sectionPaddingMd: string
+    sectionPaddingLg: string
+    rowPadding: string
+    headerGap: string
+    cardGap: string
+    gridGap: string
+    buttonPaddingXs: string
+    buttonPaddingSm: string
+    buttonPaddingMd: string
+    navHeight: string
+    circleButtonSize: string
+    iconSizeSm: string
+    iconSizeMd: string
+    uploadPadding: string
   }
   audio: {
     sampleRate: number
@@ -51,6 +66,21 @@ export const defaultConfig: Config = {
   ui: {
     updateFps: 30,
     progressSegments: [0, 25, 50, 75, 100],
+    sectionPaddingSm: 'p-4',
+    sectionPaddingMd: 'p-5',
+    sectionPaddingLg: 'p-6',
+    rowPadding: 'p-3',
+    headerGap: 'gap-3',
+    cardGap: 'gap-4',
+    gridGap: 'gap-6',
+    buttonPaddingXs: 'px-3 py-1.5',
+    buttonPaddingSm: 'px-3 py-2',
+    buttonPaddingMd: 'px-4 py-2',
+    navHeight: 'h-14',
+    circleButtonSize: 'h-9 w-9',
+    iconSizeSm: 'h-4 w-4',
+    iconSizeMd: 'h-5 w-5',
+    uploadPadding: 'px-6 py-8',
   },
   audio: {
     sampleRate: 44100,

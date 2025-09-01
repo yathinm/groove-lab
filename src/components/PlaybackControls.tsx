@@ -1,4 +1,5 @@
 import { Play, Square, Mic } from 'lucide-react'
+import { useAppConfig } from '../config/ConfigProvider'
 type Props = {
   isPlaying: boolean
   disabled: boolean
@@ -11,15 +12,16 @@ type Props = {
 }
 
 export function PlaybackControls({ isPlaying, disabled, onPlayPause, recordArmed, isRecording, onArm, onDisarm }: Props) {
+  const cfg = useAppConfig()
   return (
     <div className="flex items-center gap-3">
       <button
-        className="inline-flex items-center rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className={`inline-flex items-center rounded-md bg-amber-600 ${cfg.ui.buttonPaddingSm} text-sm font-semibold text-white shadow-sm hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed`}
         onClick={() => { /* eslint-disable-next-line no-console */ console.log('[UI] record button clicked', { recordArmed }); (recordArmed ? onDisarm : onArm)() }}
         disabled={disabled}
         title={recordArmed ? 'Disarm recording' : 'Arm recording'}
       >
-        <Mic className="mr-2 h-4 w-4" />
+        <Mic className={`mr-2 ${cfg.ui.iconSizeSm}`} />
         {recordArmed ? 'Stop' : 'Record'}
       </button>
       {isRecording && (
@@ -29,11 +31,11 @@ export function PlaybackControls({ isPlaying, disabled, onPlayPause, recordArmed
         </span>
       )}
       <button
-        className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+        className={`inline-flex items-center rounded-md bg-slate-900 ${cfg.ui.buttonPaddingMd} text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed`}
         onClick={() => { /* eslint-disable-next-line no-console */ console.log('[UI] play/pause clicked', { isPlaying }); onPlayPause() }}
         disabled={disabled}
       >
-        {isPlaying ? <Square className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
+        {isPlaying ? <Square className={`mr-2 ${cfg.ui.iconSizeSm}`} /> : <Play className={`mr-2 ${cfg.ui.iconSizeSm}`} />}
         {isPlaying ? 'Pause' : 'Play'}
       </button>
     </div>

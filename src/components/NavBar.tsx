@@ -1,4 +1,5 @@
 import { Home as HomeIcon, User as UserIcon } from 'lucide-react'
+import { useAppConfig } from '../config/ConfigProvider'
 
 type Props = {
   current: 'home' | 'profile'
@@ -6,6 +7,7 @@ type Props = {
 }
 
 export default function NavBar({ current, onNavigate }: Props) {
+  const cfg = useAppConfig()
   const navStyle: React.CSSProperties = {
     position: 'static',
     zIndex: 1,
@@ -19,16 +21,16 @@ export default function NavBar({ current, onNavigate }: Props) {
   return (
     <nav style={navStyle}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-14 items-center justify-between">
+        <div className={`flex ${cfg.ui.navHeight} items-center justify-between`}>
           <div className="flex items-center gap-2">
           </div>
           <div className="flex items-center gap-2">
             <button
               aria-label={label}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-orange-600 text-white shadow hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
+              className={`inline-flex ${cfg.ui.circleButtonSize} items-center justify-center rounded-full bg-orange-600 text-white shadow hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600`}
               onClick={() => onNavigate(showTarget)}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className={cfg.ui.iconSizeMd} />
             </button>
           </div>
         </div>

@@ -58,12 +58,12 @@ export default function Home() {
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
           {/* Upload */}
-          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-orange-200">
+          <div className={`rounded-xl bg-white ${cfg.ui.sectionPaddingMd} shadow-sm ring-1 ring-orange-200`}>
             <FileUpload disabled={state.processing} error={state.error} onSelect={(f) => dispatch(selectFile(f) as any)} />
           </div>
 
           {/* Timeline */}
-          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-orange-200">
+          <div className={`rounded-xl bg-white ${cfg.ui.sectionPaddingMd} shadow-sm ring-1 ring-orange-200`}>
             <h2 className="mb-3 text-sm font-semibold text-slate-700">Timeline</h2>
             <div className="max-w-2xl">
               <MusicScroll
@@ -76,7 +76,7 @@ export default function Home() {
           </div>
 
           {/* Tracks */}
-          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-orange-200">
+          <div className={`rounded-xl bg-white ${cfg.ui.sectionPaddingMd} shadow-sm ring-1 ring-orange-200`}>
             <h2 className="mb-4 text-sm font-semibold text-slate-700">Tracks</h2>
             <div className="grid gap-3">
               <RecordedRow />
@@ -89,7 +89,7 @@ export default function Home() {
         {/* Right column */}
         <div className="space-y-6">
           {/* Playback & Metronome */}
-          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-orange-200">
+          <div className={`rounded-xl bg-white ${cfg.ui.sectionPaddingMd} shadow-sm ring-1 ring-orange-200`}>
             <h2 className="mb-4 text-sm font-semibold text-slate-700">Playback</h2>
             <div className="flex flex-wrap items-center gap-4">
               <BPMCard bpm={state.bpm} processing={state.processing} />
@@ -119,7 +119,7 @@ export default function Home() {
           </div>
 
           {/* Levels */}
-          <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-orange-200">
+          <div className={`rounded-xl bg-white ${cfg.ui.sectionPaddingMd} shadow-sm ring-1 ring-orange-200`}>
             <h2 className="mb-4 text-sm font-semibold text-slate-700">Levels</h2>
             <VolumeControls
               trackVolume={state.trackVolume}

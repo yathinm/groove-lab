@@ -10,7 +10,7 @@ export function FileUpload({ disabled, error, onSelect }: Props) {
   const cfg = useAppConfig()
   return (
     <section className="flex flex-col gap-3">
-      <div className="group flex flex-col gap-4 rounded-2xl border-2 border-dashed border-orange-300 bg-white px-6 py-8 text-center transition-colors hover:border-orange-400 hover:bg-orange-50 sm:flex-row sm:items-center sm:justify-between sm:text-left">
+      <div className={`group flex flex-col ${cfg.ui.cardGap} rounded-2xl border-2 border-dashed border-orange-300 bg-white ${cfg.ui.uploadPadding} text-center transition-colors hover:border-orange-400 hover:bg-orange-50 sm:flex-row sm:items-center sm:justify-between sm:text-left`}>
         <div className="flex flex-col items-center gap-2 sm:flex-row">
           <Upload className="h-6 w-6 text-orange-600" />
           <div>
@@ -23,7 +23,7 @@ export function FileUpload({ disabled, error, onSelect }: Props) {
             </div>
           </div>
         </div>
-        <label className="inline-flex cursor-pointer items-center justify-center self-center rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 sm:self-auto">
+        <label className={`inline-flex cursor-pointer items-center justify-center self-center rounded-md bg-orange-600 ${cfg.ui.buttonPaddingSm} text-sm font-semibold text-white shadow-sm hover:bg-orange-500 sm:self-auto`}>
           Browse
           <input
             id="file"
