@@ -4,7 +4,7 @@ export function HeaderInfo() {
   return (
     <header className="overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 p-6 text-white shadow-sm">
       <div className="flex flex-col gap-3">
-        <div className="relative h-[56px] sm:h-[68px]">
+        <div className="relative mt-12 sm:mt-16 md:mt-20 h-[56px] sm:h-[68px]">
           <AnimatedTitle texts={["GROOVE","LAB"]} className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight" />
         </div>
         <p className="text-sm text-white/90">Upload a song, detect BPM, and practice with a synced metronome.</p>
